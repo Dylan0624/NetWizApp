@@ -519,7 +519,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginTestPage> {
   List<String> _logs = [];
 
   final TextEditingController _usernameController = TextEditingController(text: "admin");
-  final TextEditingController _passwordController = TextEditingController(text: "3033b8c2f480de5d01a310d198e74b84d5ddeb73a40b04bef95a7ce167cce6f7");
+  final TextEditingController _passwordController = TextEditingController(text: "790d9032a72acc5bb402cc4baf01751cebba9bf4d604555d21b195845ed8beff");
   final TextEditingController _baseUrlController = TextEditingController(text: "http://192.168.1.1");
 
   String _sessionId = "";

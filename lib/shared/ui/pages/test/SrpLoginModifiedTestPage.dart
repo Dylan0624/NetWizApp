@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:whitebox/shared/api/login_process.dart'; // 引入新的登入處理類
 
 class SrpLoginModifiedTestPage extends StatefulWidget {
-  const SrpLoginModifiedTestPage({Key? key}) : super(key: key);
+  final String initialPassword;
+
+  const SrpLoginModifiedTestPage({Key? key}) : initialPassword = "", super(key: key);
+
+  // 添加具有初始密碼的構造函數
+  const SrpLoginModifiedTestPage.withPassword(this.initialPassword, {Key? key}) : super(key: key);
 
   @override
   State<SrpLoginModifiedTestPage> createState() => _SrpLoginModifiedTestPageState();
@@ -15,12 +20,27 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
   String _logOutput = "準備開始測試...";
   final _scrollController = ScrollController();
 
-  final TextEditingController _usernameController = TextEditingController(text: "admin");
-  final TextEditingController _passwordController = TextEditingController(text: "3033b8c2f480de5d01a310d198e74b84d5ddeb73a40b04bef95a7ce167cce6f7");
-  final TextEditingController _baseUrlController = TextEditingController(text: "http://192.168.1.1");
+  late TextEditingController _usernameController;
+  late TextEditingController _passwordController;
+  late TextEditingController _baseUrlController;
 
   String _sessionId = "";
   String _csrfToken = "";
+
+  @override
+  void initState() {
+    super.initState();
+    // 初始化控制器並設置初始值
+    _usernameController = TextEditingController(text: "admin");
+    _passwordController = TextEditingController(
+        text: widget.initialPassword.isNotEmpty ? widget.initialPassword : "ceb81a924d4b2ece0f552a2a1d56c3c5cbfd864107a69c9a3acbde5e71727b9c"
+    );
+    _baseUrlController = TextEditingController(text: "http://192.168.1.1");
+
+    if (widget.initialPassword.isNotEmpty) {
+      _logAdd("已自動填入計算得到的密碼：${widget.initialPassword}");
+    }
+  }
 
   @override
   void dispose() {
@@ -202,7 +222,6 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
                   const Text('密碼', style: TextStyle(fontWeight: FontWeight.bold)),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
                     decoration: const InputDecoration(
                       hintText: '密碼',
                       border: OutlineInputBorder(),
