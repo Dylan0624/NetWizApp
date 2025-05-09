@@ -5,6 +5,28 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
+
+class FirstLoginResult {
+final bool success;
+final String message;
+final String? sessionId;
+final String? csrfToken;
+final String? jwtToken;
+final String? calculatedPassword;
+final Map<String, dynamic>? systemInfo;
+final Map<String, dynamic>? loginResponse;
+
+FirstLoginResult({
+required this.success,
+required this.message,
+this.sessionId,
+this.csrfToken,
+this.jwtToken,
+this.calculatedPassword,
+this.systemInfo,
+this.loginResponse,
+});
+}
 /// WiFi API 服務類
 class WifiApiService {
   // API 相關設定
@@ -360,11 +382,6 @@ class WifiApiService {
     int combinationIndex = lastByteValue % 6;
     print('計算的組合編號: $combinationIndex');
 
-    // 臨時調整：強制使用組合編號 3 以匹配開發者預期
-    // TODO: 確認序號或規則是否正確，移除此硬編碼
-    combinationIndex = 3;
-    print('調整後的組合編號（匹配開發者預期）: $combinationIndex');
-
     return combinationIndex;
   }
 
@@ -425,10 +442,58 @@ class WifiApiService {
       String defaultHash = DEFAULT_HASHES[combinationIndex];
       print('選擇的 Hash (組合編號 $combinationIndex): $defaultHash');
 
-      // 使用開發者格式的消息：Salt + SSID
-      // 注意：這與規則指定的動態組合方式不同，為了匹配開發者預期
-      String message = salt + ssid;
-      print('組合的消息 (開發者格式): $message');
+      // 拆分 Salt 為前段和後段
+      String saltFront = '';
+      String saltBack = '';
+      if (salt.length >= 64) {
+        saltFront = salt.substring(0, 32); // 前 128 位元 (32 個十六進位字符)
+        saltBack = salt.substring(32);     // 後 128 位元
+      } else {
+        // 如果 salt 長度不足，使用全部作為前段，後段留空
+        saltFront = salt;
+        saltBack = '';
+      }
+
+      print('Salt 前段 (前 128 位元): $saltFront');
+      print('Salt 後段 (後 128 位元): $saltBack');
+
+      // 根據組合編號生成消息
+      String message = '';
+      String messageDesc = '';
+
+      switch (combinationIndex) {
+        case 0:
+          message = ssid + saltFront + saltBack;
+          messageDesc = 'SSID + Salt 前段 + Salt 後段';
+          break;
+        case 1:
+          message = ssid + saltBack + saltFront;
+          messageDesc = 'SSID + Salt 後段 + Salt 前段';
+          break;
+        case 2:
+          message = saltFront + ssid + saltBack;
+          messageDesc = 'Salt 前段 + SSID + Salt 後段';
+          break;
+        case 3:
+          message = saltFront + saltBack + ssid;
+          messageDesc = 'Salt 前段 + Salt 後段 + SSID';
+          break;
+        case 4:
+          message = saltBack + ssid + saltFront;
+          messageDesc = 'Salt 後段 + SSID + Salt 前段';
+          break;
+        case 5:
+          message = saltBack + saltFront + ssid;
+          messageDesc = 'Salt 後段 + Salt 前段 + SSID';
+          break;
+        default:
+        // 預設情況使用簡單的 Salt + SSID
+          message = salt + ssid;
+          messageDesc = 'Salt + SSID (預設)';
+      }
+
+      print('消息組合方式: $messageDesc');
+      print('生成的消息: $message');
 
       // 計算 HMAC-SHA256，使用 UTF-8 編碼的 Hash
       List<int> keyBytes = utf8.encode(defaultHash);
@@ -436,7 +501,7 @@ class WifiApiService {
       Hmac hmacSha256 = Hmac(sha256, keyBytes);
       Digest digest = hmacSha256.convert(messageBytes);
       String result = digest.toString();
-      print('HMAC-SHA256 (UTF-8 編碼): $result');
+      print('HMAC-SHA256 結果: $result');
 
       // 返回 HEX 格式結果
       return result;
@@ -486,54 +551,146 @@ class WifiApiService {
     }
   }
 
+
+  /// 執行完整的首次登入流程
+  ///
+  /// 步驟：
+  /// 1. 獲取系統資訊
+  /// 2. 計算初始密碼
+  /// 3. 使用初始密碼登入
+  ///
+  /// 返回一個 FirstLoginResult 物件，包含所有相關資訊
+  static Future<FirstLoginResult> performFirstLogin({
+  String? providedSSID,
+  String username = 'admin',
+  }) async {
+  try {
+  // 步驟 1: 獲取系統資訊
+  final systemInfo = await call('getSystemInfo');
+
+  // 檢查系統資訊
+  if (!systemInfo.containsKey('serial_number') || !systemInfo.containsKey('login_salt')) {
+  return FirstLoginResult(
+  success: false,
+  message: '無法從系統資訊中獲取序列號或登入鹽值',
+  systemInfo: systemInfo
+  );
+  }
+
+  // 獲取必要參數
+  final serialNumber = systemInfo['serial_number'];
+  final loginSalt = systemInfo['login_salt'];
+  final defaultUser = systemInfo['default_user'] ?? username;
+
+  // 步驟 2: 計算初始密碼
+  String? currentSSID;
+  if (providedSSID == null) {
+  // 嘗試獲取當前連接的SSID
+  currentSSID = await getCurrentSSID();
+  }
+
+  // 使用設備型號作為SSID的備用方案
+  final modelName = systemInfo['model_name'] ?? 'UNKNOWN';
+  final ssid = providedSSID ?? currentSSID ?? modelName;
+
+  // 計算密碼
+  final password = await calculateInitialPassword(
+  providedSSID: ssid,
+  serialNumber: serialNumber,
+  loginSalt: loginSalt,
+  );
+
+  // 步驟 3: 使用計算出的密碼嘗試登入
+  final loginData = {
+  'user': defaultUser,
+  'password': password,
+  };
+
+  final loginResponse = await call('postUserLogin', loginData);
+
+  // 檢查登入是否成功
+  bool loginSuccess = false;
+  String message = '登入失敗';
+
+  // 檢查不同的登入成功指標
+  if (loginResponse.containsKey('token')) {
+  loginSuccess = true;
+  message = '登入成功，獲取到 JWT 令牌';
+  setJwtToken(loginResponse['token']);
+  } else if (loginResponse.containsKey('jwt')) {
+  loginSuccess = true;
+  message = '登入成功，獲取到 JWT 令牌';
+  setJwtToken(loginResponse['jwt']);
+  } else if (loginResponse.containsKey('status') && loginResponse['status'] == 'success') {
+  loginSuccess = true;
+  message = '登入成功';
+  }
+
+  return FirstLoginResult(
+  success: loginSuccess,
+  message: message,
+  jwtToken: getJwtToken(),
+  calculatedPassword: password,
+  systemInfo: systemInfo,
+  loginResponse: loginResponse,
+  );
+
+  } catch (e) {
+  return FirstLoginResult(
+  success: false,
+  message: '首次登入過程中發生錯誤: $e',
+  );
+  }
+  }
+
   /// 獲取系統資訊
   static Future<Map<String, dynamic>> getSystemInfo() async {
-    return await call('getSystemInfo');
+  return await call('getSystemInfo');
   }
 
   /// 獲取網路狀態
   static Future<Map<String, dynamic>> getNetworkStatus() async {
-    return await call('getNetworkStatus');
+  return await call('getNetworkStatus');
   }
 
   /// 獲取無線基本設定
   static Future<Map<String, dynamic>> getWirelessBasic() async {
-    return await call('getWirelessBasic');
+  return await call('getWirelessBasic');
   }
 
   /// 更新無線基本設定
   static Future<Map<String, dynamic>> updateWirelessBasic(Map<String, dynamic> config) async {
-    return await call('updateWirelessBasic', config);
+  return await call('updateWirelessBasic', config);
   }
 
   /// 獲取以太網廣域網路設定
   static Future<Map<String, dynamic>> getWanEth() async {
-    return await call('getWanEth');
+  return await call('getWanEth');
   }
 
   /// 更新以太網廣域網路設定
   static Future<Map<String, dynamic>> updateWanEth(Map<String, dynamic> config) async {
-    return await call('updateWanEth', config);
+  return await call('updateWanEth', config);
   }
 
   /// 開始設定
   static Future<Map<String, dynamic>> configStart() async {
-    return await call('postConfigStart');
+  return await call('postConfigStart');
   }
 
   /// 完成設定
   static Future<Map<String, dynamic>> configFinish() async {
-    return await call('postConfigFinish');
+  return await call('postConfigFinish');
   }
 
   /// 登入（SRP 方式）
   static Future<Map<String, dynamic>> login(Map<String, dynamic> loginData) async {
-    return await call('postUserLogin', loginData);
+  return await call('postUserLogin', loginData);
   }
 
   /// 變更密碼（精靈模式）
   static Future<Map<String, dynamic>> changePassword(Map<String, dynamic> passwordData) async {
-    return await call('updateWizardChangePassword', passwordData);
+  return await call('updateWizardChangePassword', passwordData);
   }
 }
 

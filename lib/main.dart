@@ -8,6 +8,7 @@ import 'package:whitebox/shared/ui/pages/test/TestPage.dart';
 import 'package:whitebox/shared/ui/pages/test/TestPasswordPage.dart';
 import 'package:whitebox/shared/ui/pages/test/SrpLoginTestPage.dart';
 import 'package:whitebox/shared/ui/pages/test/SrpLoginModifiedTestPage.dart';
+import 'package:whitebox/shared/ui/pages/test/FirstLoginTestPage.dart';
 
 void main() {
   runApp(const MyApp());
