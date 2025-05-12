@@ -330,16 +330,16 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
 
                         const SizedBox(height: 20),
 
-                        // Secondary DNS
-                        const Text(
-                          'Secondary DNS (Optional)',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildIpInputField(_secondaryDnsController, '            .            .            .            '),
+                        // // Secondary DNS
+                        // const Text(
+                        //   'Secondary DNS (Optional)',
+                        //   style: TextStyle(
+                        //     fontSize: 18,
+                        //     fontWeight: FontWeight.normal,
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 8),
+                        // _buildIpInputField(_secondaryDnsController, '            .            .            .            '),
 
                         // 添加額外的底部空間，確保滾動到底部時看得到最後一個輸入框
                         const SizedBox(height: 250),
