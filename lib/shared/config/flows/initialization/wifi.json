@@ -21,7 +21,7 @@
           "name": "Wireless",
           "next": 4,
           "components": ["SetSSIDComponent"],
-          "detail": ["WPA2 Personal", "WPA3 Personal", "WPA2/WPA3 Personal", "WPA2 Enterprise"]
+          "detail": ["WPA3 Personal"]
         },
         {
           "id": 4,

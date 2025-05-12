@@ -274,6 +274,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     if (steps.isEmpty) return;
     final currentComponents = _getCurrentStepComponents();
 
+    // Check Account Password Component
     if (currentComponents.contains('AccountPasswordComponent')) {
       if (!_validateForm()) {
         List<String> detailOptions = [];
@@ -290,32 +291,32 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
 
         String errorMessage = '';
         if (detailOptions.contains('User') && userName.isEmpty) {
-          errorMessage = '請輸入用戶名';
+          errorMessage = 'Please enter a username';
         } else if (detailOptions.contains('Password')) {
           if (password.isEmpty) {
-            errorMessage = '請輸入密碼';
+            errorMessage = 'Please enter a password';
           } else if (password.length < 8) {
-            errorMessage = '密碼必須至少8個字元';
+            errorMessage = 'Password must be at least 8 characters';
           } else if (password.length > 32) {
-            errorMessage = '密碼長度不能超過32個字元';
+            errorMessage = 'Password must be 64 characters or less';
           } else {
             final RegExp validChars = RegExp(r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$');
             if (!validChars.hasMatch(password)) {
-              errorMessage = '密碼包含不允許的字元';
+              errorMessage = 'Password contains invalid characters';
             }
           }
         }
 
         if (errorMessage.isEmpty && detailOptions.contains('Confirm Password')) {
           if (confirmPassword.isEmpty) {
-            errorMessage = '請輸入確認密碼';
+            errorMessage = 'Please confirm your password';
           } else if (confirmPassword != password) {
-            errorMessage = '兩次輸入的密碼不一致';
+            errorMessage = 'Passwords do not match';
           }
         }
 
         if (errorMessage.isEmpty) {
-          errorMessage = '請完成當前步驟的設定';
+          errorMessage = 'Please complete all required fields';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -326,6 +327,91 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       setState(() {
         isCurrentStepComplete = true;
       });
+    }
+
+    // Check Connection Type Component
+    else if (currentComponents.contains('ConnectionTypeComponent')) {
+      if (!isCurrentStepComplete) {
+        String errorMessage = '';
+
+        if (connectionType == 'Static IP') {
+          if (staticIpConfig.ipAddress.isEmpty) {
+            errorMessage = 'Please enter an IP address';
+          } else if (staticIpConfig.subnetMask.isEmpty) {
+            errorMessage = 'Please enter a subnet mask';
+          } else if (staticIpConfig.gateway.isEmpty) {
+            errorMessage = 'Please enter a gateway address';
+          } else if (staticIpConfig.primaryDns.isEmpty) {
+            errorMessage = 'Please enter a DNS server address';
+          }
+        } else if (connectionType == 'PPPoE') {
+          if (pppoeUsername.isEmpty) {
+            errorMessage = 'Please enter a PPPoE username';
+          } else if (pppoePassword.isEmpty) {
+            errorMessage = 'Please enter a PPPoE password';
+          }
+        }
+
+        if (errorMessage.isEmpty) {
+          errorMessage = 'Please complete all required fields';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+        return;
+      }
+    }
+
+    // Check SSID Component
+    else if (currentComponents.contains('SetSSIDComponent')) {
+      if (!isCurrentStepComplete) {
+        String errorMessage = '';
+
+        // Validate SSID
+        if (ssid.isEmpty) {
+          errorMessage = 'Please enter an SSID';
+        } else if (ssid.length > 64) {
+          errorMessage = 'SSID must be 64 characters or less';
+        } else {
+          // Validate SSID characters
+          final RegExp validChars = RegExp(
+              r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
+          );
+          if (!validChars.hasMatch(ssid)) {
+            errorMessage = 'SSID contains invalid characters';
+          }
+        }
+
+        // Validate Password if needed
+        if (errorMessage.isEmpty && securityOption != 'no authentication' &&
+            securityOption != 'Enhanced Open (OWE)') {
+          if (ssidPassword.isEmpty) {
+            errorMessage = 'Please enter a password';
+          } else if (ssidPassword.length < 8) {
+            errorMessage = 'Password must be at least 8 characters';
+          } else if (ssidPassword.length > 64) {
+            errorMessage = 'Password must be 64 characters or less';
+          } else {
+            // Validate password characters
+            final RegExp validChars = RegExp(
+                r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
+            );
+            if (!validChars.hasMatch(ssidPassword)) {
+              errorMessage = 'Password contains invalid characters';
+            }
+          }
+        }
+
+        if (errorMessage.isEmpty) {
+          errorMessage = 'Please complete all required fields';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+        return;
+      }
     }
 
     if (currentStepIndex < steps.length - 1) {
@@ -342,9 +428,10 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       );
       _isUpdatingStep = false;
     } else if (currentStepIndex == steps.length - 1 && !isLastStepCompleted) {
-      if (currentComponents.contains('AccountPasswordComponent') && !isCurrentStepComplete) {
+      // Check overall completion instead of just AccountPasswordComponent
+      if (!isCurrentStepComplete) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('請完成當前步驟的設定')),
+          const SnackBar(content: Text('Please complete all required fields')),
         );
         return;
       }
