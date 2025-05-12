@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFD9D9D9),
         fontFamily: 'Segoe UI', // 設定全局字體為 Segoe UI
       ),
-      home: const InitializationPage(),
+      home: const TestPasswordPage(),
     );
   }
 }

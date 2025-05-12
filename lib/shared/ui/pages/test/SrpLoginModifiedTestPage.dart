@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:whitebox/shared/api/login_process.dart'; // 引入登入處理類
+import 'package:flutter/services.dart';
+import 'package:whitebox/shared/api/login_process.dart'; // 引入修改後的登入處理類
 import 'dart:convert'; // 用於 JSON 格式化
 import 'dart:io'; // 用於 HTTP 請求
 
@@ -23,9 +24,10 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
   late TextEditingController _usernameController;
   late TextEditingController _passwordController;
   late TextEditingController _baseUrlController;
+  late TextEditingController _apiPathController; // API路徑輸入框
 
   String _sessionId = "";
-  String _csrfToken = "";
+  String _jwtToken = "";
 
   // HttpClient 用於發送手動請求
   final HttpClient _httpClient = HttpClient();
@@ -36,9 +38,10 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
     // 初始化控制器並設置初始值
     _usernameController = TextEditingController(text: "admin");
     _passwordController = TextEditingController(
-        text: widget.initialPassword.isNotEmpty ? widget.initialPassword : "ceb81a924d4b2ece0f552a2a1d56c3c5cbfd864107a69c9a3acbde5e71727b9c"
+        text: widget.initialPassword.isNotEmpty ? widget.initialPassword : "bee1958f48a75a44b09110a19c1cc7ad58a5d8d45c74f733016687589b612493"
     );
     _baseUrlController = TextEditingController(text: "http://192.168.1.1");
+    _apiPathController = TextEditingController(text: "/api/v1/network/wan_eth"); // 默認API路徑
 
     if (widget.initialPassword.isNotEmpty) {
       _logAdd("已自動填入計算得到的密碼：${widget.initialPassword}");
@@ -51,6 +54,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
     _usernameController.dispose();
     _passwordController.dispose();
     _baseUrlController.dispose();
+    _apiPathController.dispose();
     super.dispose();
   }
 
@@ -160,11 +164,46 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
     }
   }
 
+  // 使用 JWT 令牌測試 API
+  Future<void> _testApiWithJwt() async {
+    if (_jwtToken.isEmpty) {
+      _logAdd("\n===== 測試 API 失敗 =====");
+      _logAdd("沒有可用的 JWT 令牌");
+      return;
+    }
+
+    final apiPath = _apiPathController.text.trim();
+    if (apiPath.isEmpty) {
+      _logAdd("\n===== 測試 API 失敗 =====");
+      _logAdd("請輸入要測試的 API 路徑");
+      return;
+    }
+
+    _logAdd("\n===== 使用 JWT 令牌測試 API =====");
+    _logAdd("API 路徑: $apiPath");
+
+    try {
+      final baseUrl = _baseUrlController.text.trim();
+
+      await _makeHttpRequest(
+          "$baseUrl$apiPath",
+          "GET",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_jwtToken'
+          }
+      );
+
+    } catch (e) {
+      _logAdd("JWT API 測試錯誤: $e");
+    }
+  }
+
   // 搜索 JWT 令牌
   void _searchForJwtInLogs() {
     _logAdd("\n===== 搜索可能的 JWT 令牌 =====");
 
-    // JWT 格式的正則表達式 (修改為更寬鬆的匹配以捕獲各種格式)
+    // JWT 格式的正則表達式
     final RegExp jwtRegex = RegExp(r'[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}');
 
     // 搜索日誌中的所有匹配項
@@ -179,6 +218,14 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
         final token = _logOutput.substring(match.start, match.end);
         _logAdd("令牌 $tokenCount: $token");
         tokenCount++;
+
+        // 如果尚未设置 JWT 令牌，就保存第一个找到的令牌
+        if (_jwtToken.isEmpty) {
+          setState(() {
+            _jwtToken = token;
+          });
+          _logAdd("自動保存此令牌以用於 API 測試");
+        }
 
         // 嘗試解碼 JWT
         try {
@@ -206,34 +253,6 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
           }
         } catch (e) {
           _logAdd("  解碼失敗: $e");
-        }
-      }
-    }
-
-    // 嘗試查找其他認證相關信息
-    _searchForAuthTokens();
-  }
-
-  // 搜索其他可能的認證令牌
-  void _searchForAuthTokens() {
-    _logAdd("\n===== 搜索其他認證令牌 =====");
-
-    // 搜索常見的認證令牌關鍵字
-    final tokenKeywords = [
-      "token", "auth", "bearer", "access_token", "id_token",
-      "refresh_token", "session", "sessionid", "csrf"
-    ];
-
-    for (final keyword in tokenKeywords) {
-      // 修正正則表達式
-      final RegExp regex = RegExp('"$keyword"\\s*:\\s*"[^"]*"', caseSensitive: false);
-      final matches = regex.allMatches(_logOutput);
-
-      if (matches.isNotEmpty) {
-        _logAdd("找到關鍵字 '$keyword' 的匹配:");
-        for (final match in matches) {
-          final fullMatch = _logOutput.substring(match.start, match.end);
-          _logAdd("  $fullMatch");
         }
       }
     }
@@ -268,7 +287,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
       _loginSuccess = false;
       _logOutput = "開始 SRP 登入流程...";
       _sessionId = "";
-      _csrfToken = "";
+      _jwtToken = "";
     });
 
     try {
@@ -291,13 +310,6 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
       final startTime = DateTime.now();
       _logAdd("開始時間: $startTime");
 
-      // 嘗試發送手動測試請求
-      try {
-        await _makeHttpRequest("$baseUrl/api/v1/login/params?username=$username", "GET");
-      } catch (e) {
-        _logAdd("測試請求失敗: $e");
-      }
-
       // 開始登入流程
       _updateStatus("正在執行 SRP 登入流程...");
       _logAdd("\n===== 開始 SRP 登入流程 =====");
@@ -318,45 +330,30 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
         _updateStatus("登入成功！");
         _logAdd("\n===== 登入成功 =====");
         _logAdd("會話 ID: ${loginResult.session.sessionId}");
-        _logAdd("CSRF 令牌: ${loginResult.session.csrfToken}");
+
+        // 檢查是否有 JWT Token
+        if (loginResult.session.jwtToken != null && loginResult.session.jwtToken!.isNotEmpty) {
+          _jwtToken = loginResult.session.jwtToken!;
+          _logAdd("JWT Token: $_jwtToken");
+        }
 
         // 記錄完整的響應結果
         _logAdd("\n===== 完整響應結果 =====");
         _logAdd("會話 ID: ${loginResult.session.sessionId}");
-        _logAdd("CSRF 令牌: ${loginResult.session.csrfToken}");
         _logAdd("返回狀態: ${loginResult.returnStatus}");
         _logAdd("消息: ${loginResult.msg}");
-
-        // 嘗試記錄響應對象的所有屬性
-        _logAdd("\n===== 響應對象屬性 =====");
-        try {
-          final props = loginResult.toString();
-          _logAdd("對象字符串表示: $props");
-        } catch (e) {
-          _logAdd("獲取對象屬性失敗: $e");
-        }
 
         setState(() {
           _loginSuccess = true;
           _sessionId = loginResult.session.sessionId;
-          _csrfToken = loginResult.session.csrfToken;
         });
 
         // 搜索日誌中可能的 JWT 令牌
         _searchForJwtInLogs();
 
-        // 登入成功後，嘗試獲取其他可能的 API 響應
-        _logAdd("\n===== 嘗試獲取附加 API 響應 =====");
-        try {
-          await _makeHttpRequest("$baseUrl/api/v1/device/info", "GET",
-              headers: {
-                "Cookie": "sessionid=${loginResult.session.sessionId}",
-                "X-CSRF-Token": loginResult.session.csrfToken
-              }
-          );
-          _logAdd("獲取設備信息成功");
-        } catch (e) {
-          _logAdd("獲取設備信息失敗: $e");
+        // 如果有 JWT Token，測試一些 API
+        if (_jwtToken.isNotEmpty) {
+          await _testApiWithJwt();
         }
       } else {
         _updateStatus("登入失敗: ${loginResult.msg}");
@@ -372,7 +369,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
         _isLoading = false;
       });
 
-      // 搜索日誌中可能的 JWT 令牌和其他認證信息（無論成功失敗）
+      // 搜索日誌中可能的 JWT 令牌
       _searchForJwtInLogs();
     }
   }
@@ -381,7 +378,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SRP 登入測試 (記錄回傳)'),
+        title: const Text('SRP 登入測試 (JWT)'),
         backgroundColor: Colors.blue,
         actions: [
           // 添加清除日誌按鈕
@@ -400,7 +397,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
             tooltip: '複製日誌',
             onPressed: () {
               // 使用剪貼板複製功能
-              // Clipboard.setData(ClipboardData(text: _logOutput));
+              Clipboard.setData(ClipboardData(text: _logOutput));
               ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('日誌已複製到剪貼板'))
               );
@@ -491,7 +488,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
               ),
             ),
 
-            // 如果登入成功，顯示會話信息
+            // 如果登入成功，顯示會話信息和 API 測試區域
             if (_loginSuccess) ...[
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -521,14 +518,62 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        const Text('CSRF 令牌: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Expanded(
-                          child: SelectableText(_csrfToken),
+                    if (_jwtToken.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Text('JWT 令牌: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: SelectableText(_jwtToken),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // API 測試區域
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'JWT API 測試',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('API 路徑', style: TextStyle(fontWeight: FontWeight.bold)),
+                    TextField(
+                      controller: _apiPathController,
+                      decoration: const InputDecoration(
+                        hintText: '/api/v1/network/wan_eth',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _jwtToken.isNotEmpty ? _testApiWithJwt : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
                         ),
-                      ],
+                        child: const Text('使用 JWT 測試 API'),
+                      ),
                     ),
                   ],
                 ),
@@ -536,7 +581,7 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
               const SizedBox(height: 16),
             ],
 
-            // 日誌輸出（增加高度使其顯示更多內容）
+            // 日誌輸出
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(8),
@@ -545,23 +590,16 @@ class _SrpLoginModifiedTestPageState extends State<SrpLoginModifiedTestPage> {
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: SelectableText( // 使用 SelectableText 以便於複製
-                        _logOutput,
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: SelectableText( // 使用 SelectableText 以便於複製
+                  _logOutput,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontFamily: 'monospace',
+                    fontSize: 12,
                   ),
-                ],
+                ),
               ),
             ),
           ],
