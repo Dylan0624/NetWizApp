@@ -31,6 +31,35 @@ class FirstLoginResult {
   });
 }
 
+
+/// SRP 登入結果類
+class SrpLoginResult {
+  final bool success;
+  final String message;
+  final String? sessionId;
+  final String? csrfToken;
+  final String? jwtToken;
+
+  SrpLoginResult({
+    required this.success,
+    required this.message,
+    this.sessionId,
+    this.csrfToken,
+    this.jwtToken,
+  });
+
+  // 從 LoginResult 創建 SrpLoginResult
+  factory SrpLoginResult.fromLoginResult(LoginResult result) {
+    return SrpLoginResult(
+      success: result.returnStatus,
+      message: result.msg,
+      sessionId: result.session.sessionId,
+      csrfToken: result.session.csrfToken,
+      jwtToken: result.session.jwtToken,
+    );
+  }
+}
+
 /// WiFi API 服務類 - 簡化版
 class WifiApiService {
   // API 相關設定
@@ -277,7 +306,7 @@ class WifiApiService {
   }
 
   /// 執行 SRP 登入流程 - 使用 LoginProcess
-  static Future<LoginResult> loginWithSRP(String username, String password) async {
+  static Future<SrpLoginResult> loginWithSRP(String username, String password) async {
     // 創建 LoginProcess 實例並執行登入流程
     final loginProcess = LoginProcess(username, password, baseUrl: baseUrl);
     final result = await loginProcess.startSRPLoginProcess();
@@ -287,7 +316,8 @@ class WifiApiService {
       setJwtToken(result.session.jwtToken!);
     }
 
-    return result;
+    // 返回轉換後的結果
+    return SrpLoginResult.fromLoginResult(result);
   }
 
   /// 執行完整的首次登入流程

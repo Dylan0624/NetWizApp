@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:whitebox/shared/api/wifi_api_service.dart';
-import 'package:whitebox/shared/api/wifi_api/login_process.dart';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
@@ -505,7 +505,6 @@ class _TestPageState extends State<TestPage> {
     }
   }
 
-  // 使用 SRP 登入
   Future<void> _loginWithSRP() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       _addLog("錯誤: 用戶名或密碼不能為空");
@@ -520,18 +519,18 @@ class _TestPageState extends State<TestPage> {
 
     try {
       // 使用 SRP 登入
-      LoginResult result = await WifiApiService.loginWithSRP(
+      final result = await WifiApiService.loginWithSRP(
           _usernameController.text,
           _passwordController.text
       );
 
-      _addLog("SRP 登入結果: ${result.msg}");
+      _addLog("SRP 登入結果: ${result.message}");
 
-      if (result.returnStatus) {
+      if (result.success) {  // 現在使用 success 而非 returnStatus
         setState(() {
-          sessionId = result.session.sessionId;
-          csrfToken = result.session.csrfToken;
-          jwtToken = result.session.jwtToken;
+          sessionId = result.sessionId;
+          csrfToken = result.csrfToken;
+          jwtToken = result.jwtToken;
           isAuthenticated = true;
           _updateStatus("SRP 登入成功");
         });
