@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:srp/client.dart' as client;
 import 'package:http/io_client.dart';
-import '../connection/api_service.dart';
-import '../connection/connection_utils.dart';
-import '../utils/utility.dart';
+import '../../connection/api_service.dart';
+import '../../connection/connection_utils.dart';
+import '../../utils/utility.dart';
 
 http.Client createUnsafeClient() {
   final ioClient = HttpClient()

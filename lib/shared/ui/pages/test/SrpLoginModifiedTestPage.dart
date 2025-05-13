@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:whitebox/shared/api/login_process.dart'; // 引入修改後的登入處理類
+import 'package:whitebox/shared/api/wifi_api/login_process.dart'; // 引入修改後的登入處理類
 import 'dart:convert'; // 用於 JSON 格式化
 import 'dart:io'; // 用於 HTTP 請求
 
