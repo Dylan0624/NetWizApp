@@ -20,17 +20,21 @@ class WifiSettingFlowPage extends StatefulWidget {
 }
 
 class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
+  // 基本設定
   String currentModel = 'Micky';
   int currentStepIndex = 0;
   bool isLastStepCompleted = false;
   bool isShowingFinishingWizard = false;
+  bool isLoading = true;
+  bool isCurrentStepComplete = false;
+  bool _isUpdatingStep = false;
 
-  // 新增省略號動畫相關變數
+  // 省略號動畫
   String _ellipsis = '';
   late Timer _ellipsisTimer;
 
+  // 表單狀態
   Map<String, dynamic> stepsConfig = {};
-  bool isLoading = true;
   StaticIpConfig staticIpConfig = StaticIpConfig();
   String userName = '';
   String password = '';
@@ -42,18 +46,13 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
   String pppoeUsername = '';
   String pppoePassword = '';
 
-  bool isCurrentStepComplete = false;
-
+  // 控制器
   late PageController _pageController;
   final StepperController _stepperController = StepperController();
-  bool _isUpdatingStep = false;
 
+  // 完成精靈的步驟名稱
   final List<String> _processNames = [
-    'Process 01',
-    'Process 02',
-    'Process 03',
-    'Process 04',
-    'Process 05',
+    'Process 01', 'Process 02', 'Process 03', 'Process 04', 'Process 05',
   ];
 
   @override
@@ -62,45 +61,28 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     _loadConfig();
     _pageController = PageController(initialPage: currentStepIndex);
     _stepperController.addListener(_onStepperControllerChanged);
-
-    // 初始化省略號動畫計時器
     _startEllipsisAnimation();
   }
-  // 新增省略號動畫方法
-  void _startEllipsisAnimation() {
-    _ellipsisTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      setState(() {
-        switch (_ellipsis) {
-          case '':
-            _ellipsis = '.';
-            break;
-          case '.':
-            _ellipsis = '..';
-            break;
-          case '..':
-            _ellipsis = '...';
-            break;
-          case '...':
-            _ellipsis = '';
-            break;
-          default:
-            _ellipsis = '';
-        }
-      });
-    });
-  }
+
   @override
   void dispose() {
     _pageController.dispose();
     _stepperController.removeListener(_onStepperControllerChanged);
     _stepperController.dispose();
-
-    // 取消省略號動畫計時器
     _ellipsisTimer.cancel();
-
     super.dispose();
   }
 
+  // 省略號動畫
+  void _startEllipsisAnimation() {
+    _ellipsisTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      setState(() {
+        _ellipsis = _ellipsis.length < 3 ? _ellipsis + '.' : '';
+      });
+    });
+  }
+
+  // 步驟控制器監聽
   void _onStepperControllerChanged() {
     if (_isUpdatingStep) return;
 
@@ -118,11 +100,10 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
   }
 
+  // 載入配置
   Future<void> _loadConfig() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
 
       final String configPath = 'lib/shared/config/flows/initialization/wifi.json';
       final String jsonContent = await rootBundle.loadString(configPath);
@@ -132,9 +113,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         isLoading = false;
       });
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _syncStepperState();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncStepperState());
     } catch (e) {
       print('載入配置出錯: $e');
       setState(() {
@@ -142,12 +121,11 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         stepsConfig = {};
       });
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showErrorDialog();
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showErrorDialog());
     }
   }
 
+  // 顯示錯誤對話框
   void _showErrorDialog() {
     showDialog(
       context: context,
@@ -158,9 +136,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
           actions: <Widget>[
             TextButton(
               child: const Text('確定'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ],
         );
@@ -168,12 +144,14 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 同步 Stepper 狀態
   void _syncStepperState() {
     _isUpdatingStep = true;
     _stepperController.jumpToStep(currentStepIndex);
     _isUpdatingStep = false;
   }
 
+  // 更新當前步驟
   void _updateCurrentStep(int stepIndex) {
     if (_isUpdatingStep || stepIndex == currentStepIndex) return;
 
@@ -197,6 +175,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     _isUpdatingStep = false;
   }
 
+  // 處理表單變更
   void _handleFormChanged(String user, String pwd, String confirmPwd, bool isValid) {
     setState(() {
       userName = user;
@@ -206,16 +185,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     });
   }
 
+  // 驗證表單
   bool _validateForm() {
-    List<String> detailOptions = [];
-    final steps = _getCurrentModelSteps();
-
-    if (steps.isNotEmpty && currentStepIndex < steps.length) {
-      var currentStep = steps[currentStepIndex];
-      if (currentStep.containsKey('detail')) {
-        detailOptions = List<String>.from(currentStep['detail']);
-      }
-    }
+    List<String> detailOptions = _getStepDetailOptions();
 
     if (detailOptions.isEmpty) {
       detailOptions = ['User', 'Password', 'Confirm Password'];
@@ -244,6 +216,22 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     return true;
   }
 
+  // 獲取當前步驟詳細選項
+  List<String> _getStepDetailOptions() {
+    List<String> detailOptions = [];
+    final steps = _getCurrentModelSteps();
+
+    if (steps.isNotEmpty && currentStepIndex < steps.length) {
+      var currentStep = steps[currentStepIndex];
+      if (currentStep.containsKey('detail')) {
+        detailOptions = List<String>.from(currentStep['detail']);
+      }
+    }
+
+    return detailOptions;
+  }
+
+  // 處理連接類型變更
   void _handleConnectionTypeChanged(String type, bool isComplete, StaticIpConfig? config, PPPoEConfig? pppoeConfig) {
     setState(() {
       connectionType = type;
@@ -260,6 +248,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     });
   }
 
+  // 處理 SSID 表單變更
   void _handleSSIDFormChanged(String newSsid, String newSecurityOption, String newPassword, bool isValid) {
     setState(() {
       ssid = newSsid;
@@ -269,152 +258,18 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     });
   }
 
+  // 處理下一步操作
   void _handleNext() {
     final steps = _getCurrentModelSteps();
     if (steps.isEmpty) return;
     final currentComponents = _getCurrentStepComponents();
 
-    // Check Account Password Component
-    if (currentComponents.contains('AccountPasswordComponent')) {
-      if (!_validateForm()) {
-        List<String> detailOptions = [];
-        if (steps.isNotEmpty && currentStepIndex < steps.length) {
-          var currentStep = steps[currentStepIndex];
-          if (currentStep.containsKey('detail')) {
-            detailOptions = List<String>.from(currentStep['detail']);
-          }
-        }
-
-        if (detailOptions.isEmpty) {
-          detailOptions = ['User', 'Password', 'Confirm Password'];
-        }
-
-        String errorMessage = '';
-        if (detailOptions.contains('User') && userName.isEmpty) {
-          errorMessage = 'Please enter a username';
-        } else if (detailOptions.contains('Password')) {
-          if (password.isEmpty) {
-            errorMessage = 'Please enter a password';
-          } else if (password.length < 8) {
-            errorMessage = 'Password must be at least 8 characters';
-          } else if (password.length > 32) {
-            errorMessage = 'Password must be 64 characters or less';
-          } else {
-            final RegExp validChars = RegExp(r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$');
-            if (!validChars.hasMatch(password)) {
-              errorMessage = 'Password contains invalid characters';
-            }
-          }
-        }
-
-        if (errorMessage.isEmpty && detailOptions.contains('Confirm Password')) {
-          if (confirmPassword.isEmpty) {
-            errorMessage = 'Please confirm your password';
-          } else if (confirmPassword != password) {
-            errorMessage = 'Passwords do not match';
-          }
-        }
-
-        if (errorMessage.isEmpty) {
-          errorMessage = 'Please complete all required fields';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-        return;
-      }
-      setState(() {
-        isCurrentStepComplete = true;
-      });
-    }
-
-    // Check Connection Type Component
-    else if (currentComponents.contains('ConnectionTypeComponent')) {
-      if (!isCurrentStepComplete) {
-        String errorMessage = '';
-
-        if (connectionType == 'Static IP') {
-          if (staticIpConfig.ipAddress.isEmpty) {
-            errorMessage = 'Please enter an IP address';
-          } else if (staticIpConfig.subnetMask.isEmpty) {
-            errorMessage = 'Please enter a subnet mask';
-          } else if (staticIpConfig.gateway.isEmpty) {
-            errorMessage = 'Please enter a gateway address';
-          } else if (staticIpConfig.primaryDns.isEmpty) {
-            errorMessage = 'Please enter a DNS server address';
-          }
-        } else if (connectionType == 'PPPoE') {
-          if (pppoeUsername.isEmpty) {
-            errorMessage = 'Please enter a PPPoE username';
-          } else if (pppoePassword.isEmpty) {
-            errorMessage = 'Please enter a PPPoE password';
-          }
-        }
-
-        if (errorMessage.isEmpty) {
-          errorMessage = 'Please complete all required fields';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-        return;
-      }
-    }
-
-    // Check SSID Component
-    else if (currentComponents.contains('SetSSIDComponent')) {
-      if (!isCurrentStepComplete) {
-        String errorMessage = '';
-
-        // Validate SSID
-        if (ssid.isEmpty) {
-          errorMessage = 'Please enter an SSID';
-        } else if (ssid.length > 64) {
-          errorMessage = 'SSID must be 64 characters or less';
-        } else {
-          // Validate SSID characters
-          final RegExp validChars = RegExp(
-              r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
-          );
-          if (!validChars.hasMatch(ssid)) {
-            errorMessage = 'SSID contains invalid characters';
-          }
-        }
-
-        // Validate Password if needed
-        if (errorMessage.isEmpty && securityOption != 'no authentication' &&
-            securityOption != 'Enhanced Open (OWE)') {
-          if (ssidPassword.isEmpty) {
-            errorMessage = 'Please enter a password';
-          } else if (ssidPassword.length < 8) {
-            errorMessage = 'Password must be at least 8 characters';
-          } else if (ssidPassword.length > 64) {
-            errorMessage = 'Password must be 64 characters or less';
-          } else {
-            // Validate password characters
-            final RegExp validChars = RegExp(
-                r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
-            );
-            if (!validChars.hasMatch(ssidPassword)) {
-              errorMessage = 'Password contains invalid characters';
-            }
-          }
-        }
-
-        if (errorMessage.isEmpty) {
-          errorMessage = 'Please complete all required fields';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-        return;
-      }
-    }
-
+    // 只對非最後一步進行表單驗證
     if (currentStepIndex < steps.length - 1) {
+      if (!_validateCurrentStep(currentComponents)) {
+        return;
+      }
+
       _isUpdatingStep = true;
       setState(() {
         currentStepIndex++;
@@ -427,15 +282,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         curve: Curves.easeInOut,
       );
       _isUpdatingStep = false;
-    } else if (currentStepIndex == steps.length - 1 && !isLastStepCompleted) {
-      // Check overall completion instead of just AccountPasswordComponent
-      if (!isCurrentStepComplete) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please complete all required fields')),
-        );
-        return;
-      }
-
+    }
+    // 最後一步（摘要頁）不需要驗證，直接進入完成精靈
+    else if (currentStepIndex == steps.length - 1 && !isLastStepCompleted) {
       _isUpdatingStep = true;
       setState(() {
         isLastStepCompleted = true;
@@ -449,6 +298,145 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
   }
 
+  // 驗證當前步驟
+  bool _validateCurrentStep(List<String> currentComponents) {
+    // 檢查 AccountPasswordComponent
+    if (currentComponents.contains('AccountPasswordComponent')) {
+      if (!_validateForm()) {
+        List<String> detailOptions = _getStepDetailOptions();
+        if (detailOptions.isEmpty) {
+          detailOptions = ['User', 'Password', 'Confirm Password'];
+        }
+
+        String errorMessage = _getAccountPasswordError(detailOptions);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+        return false;
+      }
+      setState(() {
+        isCurrentStepComplete = true;
+      });
+    }
+
+    // 檢查 ConnectionTypeComponent
+    else if (currentComponents.contains('ConnectionTypeComponent')) {
+      if (!isCurrentStepComplete) {
+        String errorMessage = _getConnectionTypeError();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+        return false;
+      }
+    }
+
+    // 檢查 SetSSIDComponent
+    else if (currentComponents.contains('SetSSIDComponent')) {
+      if (!isCurrentStepComplete) {
+        String errorMessage = _getSSIDError();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // 獲取帳戶密碼錯誤訊息
+  String _getAccountPasswordError(List<String> detailOptions) {
+    if (detailOptions.contains('User') && userName.isEmpty) {
+      return 'Please enter a username';
+    } else if (detailOptions.contains('Password')) {
+      if (password.isEmpty) {
+        return 'Please enter a password';
+      } else if (password.length < 8) {
+        return 'Password must be at least 8 characters';
+      } else if (password.length > 32) {
+        return 'Password must be 64 characters or less';
+      } else {
+        final RegExp validChars = RegExp(r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$');
+        if (!validChars.hasMatch(password)) {
+          return 'Password contains invalid characters';
+        }
+      }
+    }
+
+    if (detailOptions.contains('Confirm Password')) {
+      if (confirmPassword.isEmpty) {
+        return 'Please confirm your password';
+      } else if (confirmPassword != password) {
+        return 'Passwords do not match';
+      }
+    }
+
+    return 'Please complete all required fields';
+  }
+
+  // 獲取連接類型錯誤訊息
+  String _getConnectionTypeError() {
+    if (connectionType == 'Static IP') {
+      if (staticIpConfig.ipAddress.isEmpty) {
+        return 'Please enter an IP address';
+      } else if (staticIpConfig.subnetMask.isEmpty) {
+        return 'Please enter a subnet mask';
+      } else if (staticIpConfig.gateway.isEmpty) {
+        return 'Please enter a gateway address';
+      } else if (staticIpConfig.primaryDns.isEmpty) {
+        return 'Please enter a DNS server address';
+      }
+    } else if (connectionType == 'PPPoE') {
+      if (pppoeUsername.isEmpty) {
+        return 'Please enter a PPPoE username';
+      } else if (pppoePassword.isEmpty) {
+        return 'Please enter a PPPoE password';
+      }
+    }
+
+    return 'Please complete all required fields';
+  }
+
+  // 獲取 SSID 錯誤訊息
+  String _getSSIDError() {
+    // 驗證 SSID
+    if (ssid.isEmpty) {
+      return 'Please enter an SSID';
+    } else if (ssid.length > 64) {
+      return 'SSID must be 64 characters or less';
+    } else {
+      // 驗證 SSID 字符
+      final RegExp validChars = RegExp(
+          r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
+      );
+      if (!validChars.hasMatch(ssid)) {
+        return 'SSID contains invalid characters';
+      }
+    }
+
+    // 驗證密碼
+    if (securityOption != 'no authentication' && securityOption != 'Enhanced Open (OWE)') {
+      if (ssidPassword.isEmpty) {
+        return 'Please enter a password';
+      } else if (ssidPassword.length < 8) {
+        return 'Password must be at least 8 characters';
+      } else if (ssidPassword.length > 64) {
+        return 'Password must be 64 characters or less';
+      } else {
+        // 驗證密碼字符
+        final RegExp validChars = RegExp(
+            r'^[\x21\x23-\x2F\x30-\x39\x3A-\x3B\x3D\x3F-\x40\x41-\x5A\x5B\x5D-\x60\x61-\x7A\x7B-\x7E]+$'
+        );
+        if (!validChars.hasMatch(ssidPassword)) {
+          return 'Password contains invalid characters';
+        }
+      }
+    }
+
+    return 'Please complete all required fields';
+  }
+
+  // 處理返回操作
   void _handleBack() {
     if (currentStepIndex > 0) {
       _isUpdatingStep = true;
@@ -467,6 +455,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
   }
 
+  // 處理精靈完成
   void _handleWizardCompleted() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const InitializationPage()),
@@ -474,6 +463,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 獲取當前模型步驟
   List<dynamic> _getCurrentModelSteps() {
     if (stepsConfig.isEmpty ||
         !stepsConfig.containsKey('models') ||
@@ -484,6 +474,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     return stepsConfig['models'][currentModel]['steps'];
   }
 
+  // 獲取當前步驟組件
   List<String> _getCurrentStepComponents({int? stepIndex}) {
     final index = stepIndex ?? currentStepIndex;
     final steps = _getCurrentModelSteps();
@@ -506,6 +497,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
           : SafeArea(
         child: Column(
           children: [
+            // Stepper 區域
             Expanded(
               flex: 30,
               child: Container(
@@ -516,16 +508,18 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                   modelType: currentModel,
                   onStepChanged: _updateCurrentStep,
                   controller: _stepperController,
-                  isLastStepCompleted: isLastStepCompleted, // 傳遞狀態
+                  isLastStepCompleted: isLastStepCompleted,
                 ),
               ),
             ),
+            // 主內容區域
             Expanded(
               flex: 108,
               child: isShowingFinishingWizard
                   ? _buildFinishingWizard()
                   : Column(
                 children: [
+                  // 步驟標題
                   Expanded(
                     flex: 12,
                     child: Container(
@@ -538,6 +532,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                       ),
                     ),
                   ),
+                  // 步驟內容
                   Expanded(
                     flex: 95,
                     child: _buildPageView(),
@@ -545,6 +540,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                 ],
               ),
             ),
+            // 導航按鈕
             if (!isShowingFinishingWizard)
               Expanded(
                 flex: 38,
@@ -556,10 +552,10 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 完成精靈介面
   Widget _buildFinishingWizard() {
     return Column(
       children: [
-        // 將標題修改為「Finishing Wizard...」，並加入動態省略號
         Expanded(
           flex: 12,
           child: Container(
@@ -591,6 +587,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 獲取當前步驟名稱
   String _getCurrentStepName() {
     final steps = _getCurrentModelSteps();
     if (steps.isNotEmpty && currentStepIndex < steps.length) {
@@ -599,6 +596,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     return 'Step ${currentStepIndex + 1}';
   }
 
+  // 構建頁面視圖
   Widget _buildPageView() {
     final steps = _getCurrentModelSteps();
     if (steps.isEmpty) {
@@ -627,10 +625,13 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 構建步驟內容
   Widget _buildStepContent(int index) {
     final componentNames = _getCurrentStepComponents(stepIndex: index);
+    final steps = _getCurrentModelSteps();
 
-    if (index == _getCurrentModelSteps().length - 1) {
+    // 如果是最後一個步驟，顯示摘要
+    if (index == steps.length - 1) {
       return SingleChildScrollView(
         child: Container(
           width: double.infinity,
@@ -651,6 +652,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       );
     }
 
+    // 創建當前步驟的組件
     List<Widget> components = [];
     for (String componentName in componentNames) {
       Widget? component = _createComponentByName(componentName);
@@ -673,6 +675,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       );
     }
 
+    // 沒有定義組件的步驟
     return Container(
       color: Colors.grey[200],
       width: double.infinity,
@@ -692,10 +695,8 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 構建導航按鈕
   Widget _buildNavigationButtons() {
-    final steps = _getCurrentModelSteps();
-    final isLastStep = steps.isNotEmpty && currentStepIndex == steps.length - 1;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
@@ -746,16 +747,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
+  // 根據名稱創建組件
   Widget? _createComponentByName(String componentName) {
-    List<String> detailOptions = [];
-    final steps = _getCurrentModelSteps();
-
-    if (steps.isNotEmpty && currentStepIndex < steps.length) {
-      var currentStep = steps[currentStepIndex];
-      if (currentStep.containsKey('detail')) {
-        detailOptions = List<String>.from(currentStep['detail']);
-      }
-    }
+    List<String> detailOptions = _getStepDetailOptions();
 
     switch (componentName) {
       case 'AccountPasswordComponent':
