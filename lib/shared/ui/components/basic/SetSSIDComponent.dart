@@ -7,13 +7,20 @@ class SetSSIDComponent extends StatefulWidget {
   // Display options parameter
   final List<String> displayOptions;
 
+  // 在 SetSSIDComponent 類中添加
+  final String? initialSsid;
+  final String? initialSecurityOption;
+  final String? initialPassword;
+
   const SetSSIDComponent({
     Key? key,
     this.onFormChanged,
     this.onNextPressed,
     this.onBackPressed,
-    // Default display options
     this.displayOptions = const ['no authentication', 'Enhanced Open (OWE)', 'WPA2 Personal', 'WPA3 Personal', 'WPA2/WPA3 Personal', 'WPA2 Enterprise'],
+    this.initialSsid,
+    this.initialSecurityOption,
+    this.initialPassword,
   }) : super(key: key);
 
   @override
@@ -36,28 +43,58 @@ class _SetSSIDComponentState extends State<SetSSIDComponent> {
   String _ssidErrorText = '';
   String _passwordErrorText = '';
 
+  // 在 _SetSSIDComponentState 類的 initState 方法中
   @override
   void initState() {
     super.initState();
+
+    // 先設置安全選項，因為它會影響密碼欄位的顯示
+    if (widget.initialSecurityOption != null &&
+        widget.initialSecurityOption!.isNotEmpty &&
+        widget.displayOptions.contains(widget.initialSecurityOption)) {
+      _selectedSecurityOption = widget.initialSecurityOption!;
+    } else if (widget.displayOptions.isNotEmpty) {
+      _selectedSecurityOption = widget.displayOptions.first;
+    }
+
+    // 更新密碼欄位可見性
+    _updatePasswordVisibility();
+
+    // 初始化SSID
+    if (widget.initialSsid != null && widget.initialSsid!.isNotEmpty) {
+      _ssidController.text = widget.initialSsid!;
+    }
+
+    // 初始化密碼（確保只在需要密碼的安全類型上設置）
+    if (_showPasswordField && widget.initialPassword != null && widget.initialPassword!.isNotEmpty) {
+      print('正在設置初始密碼，長度: ${widget.initialPassword!.length}');
+      _passwordController.text = widget.initialPassword!;
+    }
+
+    // 添加監聽器
     _ssidController.addListener(() {
       _validateSsid();
       _notifyFormChanged();
     });
+
     _passwordController.addListener(() {
       _validatePassword();
       _notifyFormChanged();
     });
 
-    // Set initial security option to first available option
-    if (widget.displayOptions.isNotEmpty) {
-      _selectedSecurityOption = widget.displayOptions.first;
-    } else {
-      _selectedSecurityOption = 'WPA3 Personal'; // Default if no options
-    }
-
-    // Using addPostFrameCallback to avoid setState during build
+    // 使用 addPostFrameCallback 確保UI已經構建完成
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePasswordVisibility();
+      // 再次確認密碼是否正確設置
+      if (_showPasswordField && widget.initialPassword != null && widget.initialPassword!.isNotEmpty &&
+          _passwordController.text != widget.initialPassword) {
+        print('重新設置密碼，確保顯示正確');
+        setState(() {
+          _passwordController.text = widget.initialPassword!;
+        });
+      }
+
+      // 驗證初始表單狀態
+      _validateForm();
       _notifyFormChanged();
     });
   }

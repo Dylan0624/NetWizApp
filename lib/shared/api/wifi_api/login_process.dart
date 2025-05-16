@@ -266,7 +266,7 @@ class LoginProcess {
       };
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/v1/network/wan_eth'),
+        Uri.parse('$baseUrl/api/v1/wireless/basic'),
         headers: headers,
       );
 

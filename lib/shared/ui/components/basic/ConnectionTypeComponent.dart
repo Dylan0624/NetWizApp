@@ -14,19 +14,29 @@ class PPPoEConfig {
 }
 
 class ConnectionTypeComponent extends StatefulWidget {
-  final Function(String, bool, StaticIpConfig?, PPPoEConfig?)? onSelectionChanged;
-  final Function()? onNextPressed;
-  final Function()? onBackPressed;
-  // 新增顯示選項參數
-  final List<String> displayOptions;
+  final String? initialConnectionType;
+  final StaticIpConfig? initialStaticIpConfig;
+  final String? initialPppoeUsername;
+  final String? initialPppoePassword;
+
+  final dynamic onSelectionChanged;
+
+  final dynamic onNextPressed;
+
+  final dynamic onBackPressed;
+
+  final dynamic displayOptions;
 
   const ConnectionTypeComponent({
     Key? key,
     this.onSelectionChanged,
     this.onNextPressed,
     this.onBackPressed,
-    // 預設顯示所有選項
     this.displayOptions = const ['DHCP', 'Static IP', 'PPPoE'],
+    this.initialConnectionType,
+    this.initialStaticIpConfig,
+    this.initialPppoeUsername,
+    this.initialPppoePassword,
   }) : super(key: key);
 
   @override
@@ -75,10 +85,41 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
   @override
   void initState() {
     super.initState();
-    // 初始化選擇第一個選項
-    if (widget.displayOptions.isNotEmpty) {
+
+    // 初始化選擇第一個選項或使用提供的初始值
+    if (widget.initialConnectionType != null) {
+      _selectedConnectionType = widget.initialConnectionType!;
+    } else if (widget.displayOptions.isNotEmpty) {
       _selectedConnectionType = widget.displayOptions.first;
-      _isFormComplete = true;
+    }
+
+    // 初始化表單完成狀態
+    _isFormComplete = _selectedConnectionType != 'Static IP' && _selectedConnectionType != 'PPPoE';
+
+    // 初始化靜態IP配置
+    if (widget.initialStaticIpConfig != null && _selectedConnectionType == 'Static IP') {
+      _staticIpConfig = widget.initialStaticIpConfig!;
+      _ipController.text = _staticIpConfig.ipAddress;
+      _subnetController.text = _staticIpConfig.subnetMask;
+      _gatewayController.text = _staticIpConfig.gateway;
+      _primaryDnsController.text = _staticIpConfig.primaryDns;
+      _secondaryDnsController.text = _staticIpConfig.secondaryDns;
+
+      // 驗證所有字段，更新表單狀態
+      _validateForm();
+    }
+
+    // 初始化PPPoE配置
+    if (widget.initialPppoeUsername != null &&
+        widget.initialPppoePassword != null &&
+        _selectedConnectionType == 'PPPoE') {
+      _pppoeConfig.username = widget.initialPppoeUsername!;
+      _pppoeConfig.password = widget.initialPppoePassword!;
+      _pppoeUsernameController.text = _pppoeConfig.username;
+      _pppoePasswordController.text = _pppoeConfig.password;
+
+      // 驗證所有字段，更新表單狀態
+      _validateForm();
     }
 
     // 初始化滾動控制器

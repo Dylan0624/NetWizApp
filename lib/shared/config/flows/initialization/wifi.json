@@ -10,7 +10,9 @@
             "AccountPasswordComponent"
           ],
           "detail": [
-            "Password"
+            "User",
+            "Password",
+            "Confirm Password"
           ],
           "apiCalls": [
             {

@@ -108,7 +108,7 @@ class _InitializationPageState extends State<InitializationPage> {
             Padding(
               padding: const EdgeInsets.only(left: 20, top: 10, bottom: 10),
               child: _buildActionButton(
-                label: '手動',
+                label: 'Manual',
                 onPressed: _openManualAdd,
               ),
             ),
