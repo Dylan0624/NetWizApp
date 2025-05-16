@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:srp/client.dart' as client;
 
 // 引入 wifi_api 資料夾內的功能
 import 'wifi_api/login_process.dart';
@@ -80,7 +81,7 @@ class WifiApiService {
     // 使用確定存在的端點 - 修改為 "wizard/start" 而不是 "/wizard/start"
     'wizardStart': '/api/v1/wizard/start',
     'wizardFinish': '/api/v1/wizard/finish',
-    'wizardChangePassword': '/api/v1/wizard/change_password',
+    'wizardChangePassword': '/api/v1/user/change_password',
   };
 
 // 確保動態方法映射正確
@@ -296,6 +297,8 @@ class WifiApiService {
     }
   }
 
+
+
   // ============ 簡化的 API 方法 ============
 
   /// 獲取系統資訊
@@ -350,9 +353,95 @@ class WifiApiService {
     return await _post(endpoint, {});
   }
 
-  /// 變更密碼
-  static Future<Map<String, dynamic>> changePassword(Map<String, dynamic> passwordData) async {
-    return await _put(_endpoints['wizardChangePassword']!, passwordData);
+  /// 使用 SRP 協議變更密碼
+  static Future<Map<String, dynamic>> changePasswordWithSRP({
+    required String username,
+    required String newPassword,
+  }) async {
+    try {
+
+      // 生成新的 Salt
+      final newSalt = client.generateSalt();
+      print('生成新的 Salt: $newSalt');
+
+      // 根據新的 Salt 和密碼生成私鑰
+      final newPrivateKey = client.derivePrivateKey(newSalt, username, newPassword);
+
+      // 根據私鑰生成驗證器
+      final newVerifier = client.deriveVerifier(newPrivateKey);
+      print('生成的 Verifier: $newVerifier');
+
+      // 準備請求數據
+      final requestData = {
+        'method': 'srp',
+        'srp': {
+          'salt': newSalt,
+          'verifier': newVerifier
+        }
+      };
+
+      // 發送請求到變更密碼的 API 端點
+      print('發送變更密碼請求...');
+      final response = await _put(_endpoints['wizardChangePassword'] ?? '/api/v1/user/change_password', requestData);
+
+      if (response.containsKey('error')) {
+        print('變更密碼失敗: ${response['error']}');
+        return {
+          'success': false,
+          'message': '變更密碼失敗: ${response['error']}',
+          'data': response
+        };
+      }
+
+      print('變更密碼成功!');
+      return {
+        'success': true,
+        'message': '密碼已成功變更',
+        'data': response
+      };
+    } catch (e) {
+      print('變更密碼過程中發生錯誤: $e');
+      return {
+        'success': false,
+        'message': '變更密碼錯誤: $e',
+        'data': null
+      };
+    }
+  }
+
+  /// 使用舊密碼變更新密碼
+  static Future<Map<String, dynamic>> changePassword({
+    required String username,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      // 確保已經登入
+      if (getJwtToken() == null || getJwtToken()!.isEmpty) {
+        // 先使用舊密碼登入
+        final loginResult = await loginWithSRP(username, oldPassword);
+
+        if (!loginResult.success) {
+          return {
+            'success': false,
+            'message': '舊密碼驗證失敗，無法變更密碼',
+            'data': null
+          };
+        }
+      }
+
+      // 使用 SRP 協議變更密碼
+      return await changePasswordWithSRP(
+        username: username,
+        newPassword: newPassword,
+      );
+    } catch (e) {
+      return {
+        'success': false,
+        'message': '變更密碼錯誤: $e',
+        'data': null
+      };
+    }
   }
 
   /// 計算初始密碼 - 使用 PasswordService

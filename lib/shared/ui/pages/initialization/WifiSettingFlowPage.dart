@@ -95,6 +95,52 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
 
 //!!!!!!流程寫死的部分/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // 在 _WifiSettingFlowPageState 類中添加這個方法
+  Future<void> _changePassword() async {
+    if (password.isEmpty) {
+      _updateStatus("錯誤: 沒有設置新密碼");
+      _updateStatus("錯誤: 沒有設置新密碼");
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      _updateStatus("正在更改密碼...");
+    });
+
+    try {
+      _updateStatus("\n===== 開始變更密碼流程 =====");
+      _updateStatus("用戶名: $userName");
+      _updateStatus("新密碼: [已隱藏]");
+
+      final result = await WifiApiService.changePasswordWithSRP(
+          username: userName,
+          newPassword: password
+      );
+
+      if (result['success']) {
+        _updateStatus("密碼變更成功!");
+        _updateStatus("密碼已成功變更");
+      } else {
+        _updateStatus("密碼變更失敗: ${result['message']}");
+        _updateStatus("密碼變更失敗");
+      }
+
+      if (result['data'] != null) {
+        _updateStatus("服務器響應: ${json.encode(result['data'])}");
+      }
+
+      _updateStatus("===== 變更密碼流程結束 =====");
+    } catch (e) {
+      _updateStatus("變更密碼過程中發生錯誤: $e");
+      _updateStatus("變更密碼失敗");
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   // 初始化認證流程
   Future<void> _initializeAuthentication() async {
     try {
@@ -433,16 +479,21 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       // 步驟 3: 提交無線設置
       print('步驟 2: 正在提交無線設置...');
       await _submitWirelessSettings();
-      // await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
+      await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
 
+      if (password.isNotEmpty && confirmPassword.isNotEmpty && password == confirmPassword) {
+        print('步驟 3: 變更用戶密碼...');
+        await _changePassword();
+
+      }
       // 步驟 4: 完成配置
-      print('步驟 3: 正在完成配置...');
+      print('步驟 4: 正在完成配置...');
       await WifiApiService.configFinish();
       // await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
       print('配置已完成');
 
       // 步驟 5: 應用設置變更
-      print('步驟 4: 正在應用設置變更...');
+      print('步驟 5: 正在應用設置變更...');
       try {
         await Future.delayed(const Duration(seconds: 2)); // 給設備一些應用配置的時間
         print('設置已應用');
