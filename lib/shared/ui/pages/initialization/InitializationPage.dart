@@ -169,7 +169,6 @@ class _InitializationPageState extends State<InitializationPage> {
     );
   }
 
-// 建立搜尋按鈕 - 使用純色的搜索按鈕（與 SVG 設計相符）
   Widget _buildSearchButton() {
     return GestureDetector(
       onTap: isScanning ? null : () {
@@ -178,21 +177,14 @@ class _InitializationPageState extends State<InitializationPage> {
         });
         _scannerController.startScan();
       },
-      child: Container(
+      child: _appTheme.gradientCard.buildSimpleColorButton(
         width: double.infinity,
-        height: 50, // 按照 SVG 的高度
-        decoration: BoxDecoration(
-          color: AppColors.primary, // 使用主題中的紫色 #9747FF
-          borderRadius: BorderRadius.circular(4), // 按照 SVG 的圓角大小
-        ),
+        height: 50,
+        borderRadius: BorderRadius.circular(4),
         child: Center(
           child: Text(
             'Search Devices',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500, // Medium 權重
-              color: AppColors.textLight, // 白色文字
-            ),
+            style: AppTextStyles.buttonText,
           ),
         ),
       ),

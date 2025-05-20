@@ -202,7 +202,24 @@ class GradientCardTheme {
       child: child,
     );
   }
-
+  /// 建立簡單純色按鈕 - 沒有模糊效果和透明度
+  Widget buildSimpleColorButton({
+    required double width,
+    required double height,
+    BorderRadius? borderRadius,
+    Color backgroundColor = AppColors.primary,
+    Widget? child,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
+      ),
+      child: child,
+    );
+  }
   /// 建立自定義漸層卡片
   Widget buildCustomCard({
     required double width,
