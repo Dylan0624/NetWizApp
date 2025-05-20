@@ -151,7 +151,7 @@ class _InitializationPageState extends State<InitializationPage> {
       height: 80,
       child: GestureDetector(
         onTap: onPressed,
-        child: _appTheme.gradientCard.buildStandardCard(
+        child: _appTheme.whiteBoxTheme.buildStandardCard(
           width: 80,
           height: 80,
           child: Center(
@@ -177,7 +177,7 @@ class _InitializationPageState extends State<InitializationPage> {
         });
         _scannerController.startScan();
       },
-      child: _appTheme.gradientCard.buildSimpleColorButton(
+      child: _appTheme.whiteBoxTheme.buildSimpleColorButton(
         width: double.infinity,
         height: 50,
         borderRadius: BorderRadius.circular(4),

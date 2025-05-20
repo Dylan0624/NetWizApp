@@ -160,7 +160,7 @@ class AppDimensions {
 }
 
 /// 漸層卡片主題實現
-class GradientCardTheme {
+class WhiteBoxTheme {
   // 預設的透明度和模糊設定
   static const double defaultOpacity = 0.6; // 提高透明度（降低不透明度），使背景更容易看到
   static const double defaultBlurRadius = 3.0; // 降低模糊程度，讓背景更清晰
@@ -307,12 +307,12 @@ class AppTheme {
 
   AppTheme._internal() {
     // 初始化元件主題
-    gradientCard = GradientCardTheme();
+    whiteBoxTheme = WhiteBoxTheme(); // 名稱已變更
     // 未來可以在這裡初始化更多元件主題
   }
 
   // 元件主題實例
-  late final GradientCardTheme gradientCard;
+  late final WhiteBoxTheme whiteBoxTheme; // 名稱已變更
   // 未來可以在這裡添加更多元件主題
   // late final CustomButtonTheme customButton;
 

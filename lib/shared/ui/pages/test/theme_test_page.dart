@@ -89,7 +89,7 @@ class _ThemeTestPageState extends State<ThemeTestPage> {
 
           // 標準漸層卡片
           Center(
-            child: appTheme.gradientCard.buildStandardCard(
+            child: appTheme.whiteBoxTheme.buildStandardCard(
               width: screenSize.width * 0.9,
               height: 180,
               child: const Center(
@@ -109,7 +109,7 @@ class _ThemeTestPageState extends State<ThemeTestPage> {
 
           // 自定義漸層卡片
           Center(
-            child: appTheme.gradientCard.buildCustomCard(
+            child: appTheme.whiteBoxTheme.buildCustomCard(
               width: screenSize.width * 0.9,
               height: 180,
               borderRadius: BorderRadius.circular(12.0),
