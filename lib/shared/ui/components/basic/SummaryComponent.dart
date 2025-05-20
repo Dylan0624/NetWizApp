@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:whitebox/shared/models/StaticIpConfig.dart';
+import 'package:whitebox/shared/theme/app_theme.dart';
 
 class SummaryComponent extends StatefulWidget {
   // 接收所有設定的資料
@@ -40,7 +41,7 @@ class _SummaryComponentState extends State<SummaryComponent> {
   // 添加用於控制密碼可見性的狀態變數
   bool _wifiPasswordVisible = false;
   bool _pppoePasswordVisible = false;
-
+  final AppTheme _appTheme = AppTheme();
   // 密碼隱藏時顯示的固定數量星號
   final int _fixedHiddenSymbolsCount = 8;
 
@@ -203,9 +204,9 @@ class _SummaryComponentState extends State<SummaryComponent> {
           // 添加顯示/隱藏密碼的按鈕
           IconButton(
             icon: Icon(
-              isVisible ? Icons.visibility : Icons.visibility_off,
+              isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
               color: Colors.grey,
-              size: 20,
+              size: 25,
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),

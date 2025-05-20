@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:whitebox/shared/theme/app_theme.dart';
 
 class SetSSIDComponent extends StatefulWidget {
   final Function(String, String, String, bool)? onFormChanged;
@@ -30,7 +31,7 @@ class SetSSIDComponent extends StatefulWidget {
 class _SetSSIDComponentState extends State<SetSSIDComponent> {
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
+  final AppTheme _appTheme = AppTheme();
   String _selectedSecurityOption = ''; // Initial empty value, will be set to first option
   bool _passwordVisible = false;
   bool _showPasswordField = true;
@@ -381,9 +382,9 @@ class _SetSSIDComponentState extends State<SetSSIDComponent> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                      _passwordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                       color: _isPasswordError ? Colors.red : Colors.grey,
-                      size: 20,
+                      size: 25,
                     ),
                     onPressed: () {
                       setState(() {

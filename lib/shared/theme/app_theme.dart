@@ -159,6 +159,140 @@ class AppDimensions {
   static const double cardHeightLarge = 240.0;
 }
 
+// 在 CustomTextField 類中添加 enabled 參數
+
+class CustomTextField extends StatelessWidget {
+  final double width;
+  final double height;
+  final String? hintText;
+  final TextEditingController? controller;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final Function(String)? onChanged;
+  final String? Function(String?)? validator;
+  final FocusNode? focusNode;
+  final InputDecoration? decoration;
+  final TextStyle? textStyle;
+  final TextStyle? hintStyle;
+
+  // 添加 enabled 參數
+  final bool enabled;
+
+  // 可選擇是否啟用模糊背景效果
+  final bool enableBlur;
+
+  // 自定義邊框顏色和透明度
+  final Color borderColor;
+  final double borderOpacity;
+
+  // 自定義背景顏色和透明度
+  final Color backgroundColor;
+  final double backgroundOpacity;
+
+  const CustomTextField({
+    Key? key,
+    this.width = double.infinity,
+    this.height = AppDimensions.inputHeight,
+    this.hintText,
+    this.controller,
+    this.obscureText = false,
+    this.keyboardType = TextInputType.text,
+    this.onChanged,
+    this.validator,
+    this.focusNode,
+    this.decoration,
+    this.textStyle,
+    this.hintStyle,
+    this.enabled = true, // 添加 enabled 參數並設定默認值為 true
+    this.enableBlur = true,
+    this.borderColor = AppColors.primary,
+    this.borderOpacity = 0.7,
+    this.backgroundColor = Colors.black,
+    this.backgroundOpacity = 0.4,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          // 背景層 - 包含模糊效果和透明度
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+            child: Stack(
+              children: [
+                // 顏色背景
+                Container(
+                  width: width,
+                  height: height,
+                  color: backgroundColor.withOpacity(backgroundOpacity),
+                ),
+
+                // 模糊效果層
+                if (enableBlur)
+                  BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: WhiteBoxTheme.defaultBlurRadius,
+                      sigmaY: WhiteBoxTheme.defaultBlurRadius,
+                    ),
+                    child: Container(
+                      width: width,
+                      height: height,
+                      color: Colors.transparent,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 邊框層
+          Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+              border: Border.all(
+                color: borderColor.withOpacity(borderOpacity),
+                width: AppDimensions.borderWidthRegular,
+              ),
+            ),
+          ),
+
+          // 輸入框層
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppDimensions.spacingM),
+            child: Center(
+              child: TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                obscureText: obscureText,
+                keyboardType: keyboardType,
+                onChanged: onChanged,
+                validator: validator,
+                enabled: enabled, // 設置 TextFormField 的 enabled 屬性
+                style: textStyle ?? TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 16,
+                ),
+                decoration: decoration ?? InputDecoration(
+                  hintText: hintText,
+                  hintStyle: hintStyle ?? TextStyle(
+                    color: AppColors.textLight.withOpacity(0.5),
+                    fontSize: 16,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 /// 漸層卡片主題實現
 class WhiteBoxTheme {
   // 預設的透明度和模糊設定
@@ -202,6 +336,35 @@ class WhiteBoxTheme {
       child: child,
     );
   }
+
+  /// 建立標準漸層按鈕
+  Widget buildStandardButton({
+    required double width,
+    required double height,
+    Widget? child,
+    BorderRadius? borderRadius,
+    VoidCallback? onPressed,
+    bool isEnabled = true,
+  }) {
+    // 使用標準卡片風格但添加觸控反饋
+    return GestureDetector(
+      onTap: isEnabled ? onPressed : null,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.5, // 如果禁用則降低透明度
+        child: buildCustomCard(
+          width: width,
+          height: height,
+          borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
+          blurRadius: defaultBlurRadius,
+          gradientColors: AppColors.purpleBlueGradient,
+          borderColor: AppColors.primary,
+          opacity: defaultOpacity,
+          child: child,
+        ),
+      ),
+    );
+  }
+
   /// 建立簡單純色按鈕 - 沒有模糊效果和透明度
   Widget buildSimpleColorButton({
     required double width,
@@ -220,6 +383,43 @@ class WhiteBoxTheme {
       child: child,
     );
   }
+
+  /// 建立模糊背景文字輸入框
+  Widget buildBlurredTextField({
+    required double width,
+    double height = AppDimensions.inputHeight,
+    String? hintText,
+    TextEditingController? controller,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    Function(String)? onChanged,
+    String? Function(String?)? validator,
+    FocusNode? focusNode,
+    InputDecoration? decoration,
+    TextStyle? textStyle,
+    TextStyle? hintStyle,
+  }) {
+    return CustomTextField(
+      width: width,
+      height: height,
+      hintText: hintText,
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+      validator: validator,
+      focusNode: focusNode,
+      decoration: decoration,
+      textStyle: textStyle,
+      hintStyle: hintStyle,
+      enableBlur: true,
+      borderColor: AppColors.primary,
+      borderOpacity: 0.7,
+      backgroundColor: Colors.black,
+      backgroundOpacity: 0.4,
+    );
+  }
+
   /// 建立自定義漸層卡片
   Widget buildCustomCard({
     required double width,

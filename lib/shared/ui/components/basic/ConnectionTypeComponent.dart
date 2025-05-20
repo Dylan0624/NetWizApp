@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:whitebox/shared/models/StaticIpConfig.dart';
+import 'package:whitebox/shared/theme/app_theme.dart';
 
 // 定義 PPPoE 配置類
 class PPPoEConfig {
@@ -49,6 +50,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
   StaticIpConfig _staticIpConfig = StaticIpConfig();
   PPPoEConfig _pppoeConfig = PPPoEConfig(); // Added PPPoE configuration
 
+  final AppTheme _appTheme = AppTheme();
   // Controllers for IP-related inputs
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _subnetController = TextEditingController();
@@ -387,22 +389,18 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
     final String? staticIpError = _getErrorMessage();
     final String? pppoeError = _getPppoeErrorMessage();
 
-    // 移除固定高度，改用 ConstrainedBox 限制最小高度
-    return Container(
+    // 使用 buildStandardCard 替代原始的 Container
+    return _appTheme.whiteBoxTheme.buildStandardCard(
       width: screenSize.width * 0.9, // 寬度 90%
-      color: const Color(0xFFEFEFEF),
-      padding: const EdgeInsets.all(25.0),
-      // 使用 LayoutBuilder 來獲取父容器約束
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          // 計算可用高度
-          final availableHeight = constraints.maxHeight;
-
-          return LimitedBox(
-            maxHeight: _selectedConnectionType == 'Static IP' || _selectedConnectionType == 'PPPoE'
-                ? screenSize.height * 0.75  // 靜態 IP 或 PPPoE 時，增加最大高度限制
-                : screenSize.height * 0.25,
-            child: SingleChildScrollView(
+      height: _selectedConnectionType == 'Static IP' || _selectedConnectionType == 'PPPoE'
+          ? screenSize.height * 0.75  // 靜態 IP 或 PPPoE 時，增加高度
+          : screenSize.height * 0.25,  // 基本高度
+      child: Padding(
+        padding: const EdgeInsets.all(25.0),
+        // 使用 LayoutBuilder 來獲取父容器約束
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            return SingleChildScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(), // 確保始終可滾動
               child: ConstrainedBox(
@@ -421,6 +419,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white, // 更新為白色
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -429,6 +428,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.normal,
+                          color: Colors.white, // 更新為白色
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -492,7 +492,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isIpError ? Colors.red : Colors.black,
+                            color: _isIpError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -517,7 +517,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isSubnetError ? Colors.red : Colors.black,
+                            color: _isSubnetError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -542,7 +542,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isGatewayError ? Colors.red : Colors.black,
+                            color: _isGatewayError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -567,7 +567,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isPrimaryDnsError ? Colors.red : Colors.black,
+                            color: _isPrimaryDnsError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -586,13 +586,13 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
 
                         const SizedBox(height: 20),
 
-                        // Secondary DNS (Optional)
+                        // Secondary DNS (Optional) - 註解保留，只更新了顏色
                         // Text(
                         //   'Secondary DNS (Optional)',
                         //   style: TextStyle(
                         //     fontSize: 18,
                         //     fontWeight: FontWeight.normal,
-                        //     color: _isSecondaryDnsError ? Colors.red : Colors.black,
+                        //     color: _isSecondaryDnsError ? Colors.red : Colors.white, // 更新為白色
                         //   ),
                         // ),
                         // const SizedBox(height: 8),
@@ -640,7 +640,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isPppoeUsernameError ? Colors.red : Colors.black,
+                            color: _isPppoeUsernameError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -694,7 +694,7 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.normal,
-                            color: _isPppoePasswordError ? Colors.red : Colors.black,
+                            color: _isPppoePasswordError ? Colors.red : Colors.white, // 更新為白色
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -772,14 +772,14 @@ class _ConnectionTypeComponentState extends State<ConnectionTypeComponent> {
 
                         // 添加額外的底部空間，確保滾動到底部時看得到最後一個輸入框
                         const SizedBox(height: 250),
-                      ],
+                      ]
                     ],
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

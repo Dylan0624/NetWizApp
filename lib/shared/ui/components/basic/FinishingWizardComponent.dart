@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:whitebox/shared/theme/app_theme.dart';
 
 class ProcessInfo {
   final String name;
@@ -30,7 +31,7 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
   int _currentProcessIndex = 0;
   double _currentProgress = 0.0;
   bool _isCompleted = false;
-
+  final AppTheme _appTheme = AppTheme();
   @override
   void initState() {
     super.initState();

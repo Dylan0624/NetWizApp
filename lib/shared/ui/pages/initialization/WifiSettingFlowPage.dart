@@ -17,6 +17,8 @@ import 'package:whitebox/shared/models/StaticIpConfig.dart';
 // 引入需要的 API 服務類
 import 'package:whitebox/shared/api/wifi_api_service.dart';
 
+import '../../../theme/app_theme.dart';
+
 class WifiSettingFlowPage extends StatefulWidget {
   const WifiSettingFlowPage({super.key});
 
@@ -25,6 +27,7 @@ class WifiSettingFlowPage extends StatefulWidget {
 }
 
 class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
+  final AppTheme _appTheme = AppTheme();
   // 基本設定
   String currentModel = 'Micky';
   int currentStepIndex = 0;
@@ -1086,7 +1089,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                       alignment: Alignment.center,
                       child: Text(
                         _getCurrentStepName(),
-                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.normal),
+                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.normal, color: Colors.white,),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -1254,7 +1257,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
-  // 構建導航按鈕
+  // 修改 _buildNavigationButtons 方法
   Widget _buildNavigationButtons() {
     return Container(
       width: double.infinity,
@@ -1262,40 +1265,38 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // 返回按鈕直接使用 buildStandardCard
           Expanded(
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                border: Border.all(color: Colors.grey[400]!),
-              ),
-              child: TextButton(
-                onPressed: currentStepIndex > 0 ? _handleBack : null,
-                child: const Text(
-                  'Back',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
+            child: Opacity(
+              opacity: currentStepIndex > 0 ? 1.0 : 0.5, // 如果不能返回則降低透明度
+              child: GestureDetector(
+                onTap: currentStepIndex > 0 ? _handleBack : null,
+                child: _appTheme.whiteBoxTheme.buildStandardCard(
+                  width: double.infinity,
+                  height: 56,
+                  child: Center(
+                    child: Text(
+                      'Back',
+                      style: AppTextStyles.buttonText,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 20),
+          // 下一步按鈕使用 buildSimpleColorButton
           Expanded(
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                border: Border.all(color: Colors.grey[400]!),
-              ),
-              child: TextButton(
-                onPressed: _handleNext,
-                child: const Text(
-                  'Next',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
+            child: GestureDetector(
+              onTap: _handleNext,
+              child: _appTheme.whiteBoxTheme.buildSimpleColorButton(
+                width: double.infinity,
+                height: 56,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                child: Center(
+                  child: Text(
+                    'Next',
+                    style: AppTextStyles.buttonText,
                   ),
                 ),
               ),
