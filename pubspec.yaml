@@ -24,6 +24,8 @@ dependencies:
   mobile_scanner: ^5.0.0
   # WiFi 掃描功能
   wifi_scan: ^0.4.1+2
+  wifi_iot: ^0.3.18
+#  app_settings: ^4.3.1
   # HTTP 請求處理
   http: ^1.2.0
   # 網頁視圖
@@ -73,6 +75,7 @@ dependencies:
   # QR碼生成器
   qr_flutter: ^4.1.0
 
+
 # 啟動頁面配置
 flutter_native_splash:
   color: "#FFFFFF"  # 背景顏色
@@ -96,6 +99,7 @@ flutter:
   assets:
     - lib/shared/config/flows/initialization/wifi.json  # WiFi 初始化配置檔案
     - lib/shared/config/api/wifi.json
+    - assets/images/
   # 字體配置
   fonts:
     - family: Segoe UI
