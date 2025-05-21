@@ -33,33 +33,67 @@
 
 ```
 lib/
-├── main.dart                    # 應用程式入口
+├── main.dart                            # 應用程式入口點
 ├── shared/
-│   ├── api/
-│   │   ├── wifi_api_service.dart    # Wi-Fi API 封裝
-│   │   └── srp_login_service.dart   # SRP 登入服務
-│   ├── config/
-│   │   ├── api/wifi.json           # API 端點配置
-│   │   └── flows/initialization/wifi.json  # 初始化流程
-│   ├── models/
-│   │   └── StaticIpConfig.dart     # 靜態 IP 模型
-│   └── theme/
-│       └── app_theme.dart          # 主題設定
-├── ui/
-│   ├── components/basic/           # 基礎 UI 元件
-│   │   ├── AccountPasswordComponent.dart
-│   │   ├── ConnectionTypeComponent.dart
-│   │   ├── SetSSIDComponent.dart
-│   │   ├── StepperComponent.dart
-│   │   ├── SummaryComponent.dart
-│   │   ├── FinishingWizardComponent.dart
-│   │   └── WifiScannerComponent.dart
-│   └── pages/initialization/       # 初始化頁面
-│       ├── InitializationPage.dart
-│       ├── QrCodeScannerPage.dart
-│       ├── WifiConnectionPage.dart
-│       ├── WifiSettingFlowPage.dart
-│       └── LoginPage.dart
+│   ├── api/                             # API 服務層
+│   │   ├── wifi_api_service.dart        # Wi-Fi API 服務封裝
+│   │   └── wifi_api/                    # Wi-Fi API 詳細實現
+│   │       ├── login_process.dart       # 登入處理流程
+│   │       ├── password_service.dart    # 密碼服務
+│   │       └── ...
+│   ├── connection/                      # 連接相關類
+│   │   ├── abs_api_request.dart         # API 請求抽象類
+│   │   ├── api_service.dart             # API 服務實現
+│   │   ├── connection_utils.dart        # 連接工具類
+│   │   ├── login_process.dart           # 登入流程
+│   │   └── ...
+│   ├── config/                          # 配置文件
+│   │   ├── api/
+│   │   │   └── wifi.json                # API 端點配置
+│   │   └── flows/
+│   │       └── initialization/
+│   │           └── wifi.json            # Wi-Fi 初始化流程配置
+│   ├── models/                          # 數據模型
+│   │   ├── StaticIpConfig.dart          # 靜態 IP 配置模型
+│   │   └── ...
+│   ├── theme/                           # 主題設定
+│   │   └── app_theme.dart               # 應用程式主題設定
+│   ├── utils/                           # 工具類
+│   │   ├── resource.dart                # 資源管理
+│   │   ├── srp_helper.dart              # SRP 協議幫助類
+│   │   ├── utility.dart                 # 通用工具
+│   │   └── validators.dart              # 驗證工具
+│   └── ui/
+│       ├── components/                  # UI 組件
+│       │   └── basic/                   # 基礎 UI 組件
+│       │       ├── AccountPasswordComponent.dart   # 帳戶密碼設定組件
+│       │       ├── ConnectionTypeComponent.dart    # 連線類型選擇組件
+│       │       ├── FinishingWizardComponent.dart   # 完成嚮導組件
+│       │       ├── SetSSIDComponent.dart           # SSID 設定組件
+│       │       ├── StepperComponent.dart           # 步驟導航組件
+│       │       ├── SummaryComponent.dart           # 設定摘要組件
+│       │       └── WifiScannerComponent.dart       # Wi-Fi 掃描組件
+│       └── pages/                       # 頁面
+│           ├── initialization/          # 初始化相關頁面
+│           │   ├── InitializationPage.dart         # 初始化主頁面
+│           │   ├── LoginPage.dart                  # 登入頁面
+│           │   ├── QrCodeScannerPage.dart          # QR 碼掃描頁面
+│           │   ├── WifiConnectionPage.dart         # Wi-Fi 連線頁面
+│           │   └── WifiSettingFlowPage.dart        # Wi-Fi 設定流程頁面
+│           └── test/                    # 測試頁面
+│               ├── SrpLoginModifiedTestPage.dart   # SRP 登入測試頁面
+│               ├── SrpLoginTestPage.dart           # SRP 登入標準測試頁面
+│               ├── TestPage.dart                   # 通用測試頁面
+│               ├── TestPasswordPage.dart           # 密碼測試頁面
+│               └── theme_test_page.dart            # 主題測試頁面
+└── docs/                                # 技術文檔
+    ├── 01-app-structure.md              # 專案結構與組件說明
+    ├── 02-ui-components-guide.md        # UI 組件使用指南
+    ├── 03-wifi-setting-flow-guide.md    # Wi-Fi 設定流程實作指南
+    ├── 04-ui-components-design-guide.md # UI 佈局風格指南
+    ├── 05-api-integration-guide.md      # API 整合指南
+    ├── 06-security-implementation-guide.md # 安全機制實現指南
+    └── README.md                        # 文檔索引
 ```
 
 ## 開始使用
