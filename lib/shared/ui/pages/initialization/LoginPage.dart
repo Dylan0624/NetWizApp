@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:whitebox/shared/theme/app_theme.dart';
+import 'package:whitebox/shared/api/wifi_api_service.dart';
 
 class LoginPage extends StatefulWidget {
   final Function()? onLoginSuccess;
@@ -129,21 +130,58 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  void _handleLogin() {
+  void _handleLogin() async {
     if (!_isFormValid) {
       // 如果表單無效，顯示提示
       _validatePassword();
       return;
     }
 
-    // 處理登入
-    if (widget.onLoginSuccess != null) {
-      widget.onLoginSuccess!();
-    } else {
-      // 如果沒有提供登入成功回調，則顯示一個提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login successful!')),
+    // 顯示載入提示
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logging in...')),
+    );
+
+    try {
+      // 使用 SRP 登入，傳入固定帳號和使用者輸入的密碼
+      final loginResult = await WifiApiService.loginWithSRP(
+        widget.fixedAccount, // 使用固定的帳號
+        _passwordController.text, // 使用者輸入的密碼
       );
+
+      // 處理登入結果
+      if (loginResult.success) {
+        // 儲存 JWT 令牌（如果需要）
+        if (loginResult.jwtToken != null) {
+          WifiApiService.setJwtToken(loginResult.jwtToken!);
+        }
+
+        // 呼叫 onLoginSuccess 回調
+        if (widget.onLoginSuccess != null) {
+          widget.onLoginSuccess!();
+        } else {
+          // 如果沒有提供回調，顯示成功提示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login successful: ${loginResult.message}')),
+          );
+        }
+      } else {
+        // 顯示錯誤提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: ${loginResult.message}')),
+        );
+        setState(() {
+          _isPasswordError = true;
+        });
+      }
+    } catch (e) {
+      // 處理異常
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login error: $e')),
+      );
+      setState(() {
+        _isPasswordError = true;
+      });
     }
   }
 

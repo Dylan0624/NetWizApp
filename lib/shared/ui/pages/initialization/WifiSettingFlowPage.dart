@@ -16,8 +16,10 @@ import 'package:whitebox/shared/models/StaticIpConfig.dart';
 
 // 引入需要的 API 服務類
 import 'package:whitebox/shared/api/wifi_api_service.dart';
+import 'package:wifi_iot/wifi_iot.dart';
 
 import '../../../theme/app_theme.dart';
+import 'LoginPage.dart';
 
 class WifiSettingFlowPage extends StatefulWidget {
   const WifiSettingFlowPage({super.key});
@@ -43,6 +45,8 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
   String currentSSID = '';
   String calculatedPassword = '';
   bool isAuthenticating = false;
+  bool hasInitialized = false;
+  bool isConnecting = false; // 新增變數，追蹤 Wi-Fi 連線狀態
 
   // 省略號動畫
   String _ellipsis = '';
@@ -81,10 +85,12 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     _stepperController.addListener(_onStepperControllerChanged);
     _startEllipsisAnimation();
 
-    // 初始化時自動執行獲取 SSID 和登入流程
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeAuthentication();
-    });
+    // 僅在尚未初始化時執行認證
+    if (!hasInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initializeAuthentication();
+      });
+    }
   }
 
   @override
@@ -93,6 +99,8 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     _stepperController.removeListener(_onStepperControllerChanged);
     _stepperController.dispose();
     _ellipsisTimer.cancel();
+    // 重置初始化狀態，以便下次進入頁面重新執行
+    hasInitialized = false;
     super.dispose();
   }
 
@@ -144,7 +152,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
   }
 
-  // 初始化認證流程
+  // 修改初始化認證流程
   Future<void> _initializeAuthentication() async {
     try {
       setState(() {
@@ -175,6 +183,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         setState(() {
           _updateStatus("無法計算密碼: 缺少 SSID");
         });
+        _handleAuthenticationFailure("無法計算密碼: 缺少 SSID");
         return;
       }
 
@@ -189,6 +198,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         setState(() {
           _updateStatus("密碼計算失敗");
         });
+        _handleAuthenticationFailure("密碼計算失敗");
         return;
       }
 
@@ -206,6 +216,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         setState(() {
           _updateStatus("無法登入: 缺少密碼");
         });
+        _handleAuthenticationFailure("無法登入: 缺少密碼");
         return;
       }
 
@@ -223,8 +234,11 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
           jwtToken = loginResult['jwtToken'];
           isAuthenticated = loginResult['isAuthenticated'] ?? false;
           _updateStatus("登入成功");
+          // 標記已完成初始化
+          hasInitialized = true;
         } else {
           _updateStatus("登入失敗: ${loginResult['message']}");
+          _handleAuthenticationFailure("登入失敗: ${loginResult['message']}");
         }
       });
 
@@ -240,13 +254,40 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       setState(() {
         _updateStatus("初始化過程出錯: $e");
       });
+      _handleAuthenticationFailure("初始化過程出錯: $e");
     } finally {
       setState(() {
         isAuthenticating = false;
       });
     }
   }
-
+// 新增處理認證失敗的方法
+  void _handleAuthenticationFailure(String errorMessage) {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('認證失敗'),
+            content: Text('無法完成初始認證: $errorMessage\n請重試。'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('確定'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // 導航回 InitializationPage 並移除當前頁面
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const InitializationPage()),
+                        (route) => false,
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
   // 修改 _loadCurrentWanSettings 方法，添加 debug 輸出
   Future<void> _loadCurrentWanSettings() async {
 
@@ -469,66 +510,175 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       });
     }
   }
+  // 修改自動重新連線方法
+  Future<void> _reconnectToWifi() async {
+    if (ssid.isEmpty || ssidPassword.isEmpty) {
+      print('No SSID or password set, skipping Wi-Fi connection');
+      _handleConnectionFailure('No SSID or password set');
+      return;
+    }
+
+    setState(() {
+      isConnecting = true;
+      _updateStatus('Connecting to Wi-Fi...');
+    });
+
+    try {
+      // 根據 securityOption 選擇安全類型
+      NetworkSecurity getNetworkSecurity() {
+        switch (securityOption) {
+          case 'WPA3 Personal':
+          case 'WPA2/WPA3 Personal':
+            return NetworkSecurity.WPA;
+          case 'WPA2 Personal':
+            return NetworkSecurity.WPA;
+          case 'no authentication':
+            return NetworkSecurity.NONE;
+          default:
+            return NetworkSecurity.WPA;
+        }
+      }
+
+      // 使用 wifi_iot 連接到 Wi-Fi
+      bool? isConnected = await WiFiForIoTPlugin.connect(
+        ssid,
+        password: ssidPassword,
+        security: getNetworkSecurity(),
+        joinOnce: true,
+        timeoutInSeconds: 30,
+      );
+
+      if (isConnected != true) {
+        setState(() {
+          _updateStatus('Failed to connect to Wi-Fi');
+        });
+        _handleConnectionFailure('Failed to connect to Wi-Fi');
+        return;
+      }
+
+      // 確認當前連線的 SSID
+      String? currentWifiSSID = await WiFiForIoTPlugin.getWiFiAPSSID();
+      if (currentWifiSSID != ssid) {
+        setState(() {
+          _updateStatus('Connected to wrong Wi-Fi network');
+        });
+        _handleConnectionFailure('Connected to wrong Wi-Fi network');
+        return;
+      }
+
+      setState(() {
+        _updateStatus('Wi-Fi connected successfully');
+      });
+    } catch (e) {
+      print('Error connecting to Wi-Fi: $e');
+      setState(() {
+        _updateStatus('Error connecting to Wi-Fi: $e');
+      });
+      _handleConnectionFailure('Error connecting to Wi-Fi: $e');
+    } finally {
+      setState(() {
+        isConnecting = false;
+      });
+    }
+  }
+
+  // 新增處理連線失敗的方法
+  void _handleConnectionFailure(String errorMessage) {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Wi-Fi Connection Failed'),
+            content: Text('Unable to connect to Wi-Fi: $errorMessage\nPlease try again.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const InitializationPage()),
+                        (route) => false,
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
 
   // 修改處理精靈完成的方法
   void _handleWizardCompleted() async {
     try {
-
-      // 步驟 2: 提交網絡設置
-      print('步驟 1: 正在提交網絡設置...');
+      print('Step 1: Submitting network settings...');
       await _submitWanSettings();
-      await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
+      await Future.delayed(const Duration(seconds: 2));
 
-      // 步驟 3: 提交無線設置
-      print('步驟 2: 正在提交無線設置...');
+      print('Step 2: Submitting wireless settings...');
       await _submitWirelessSettings();
-      await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
+      await Future.delayed(const Duration(seconds: 2));
 
       if (password.isNotEmpty && confirmPassword.isNotEmpty && password == confirmPassword) {
-        print('步驟 3: 變更用戶密碼...');
+        print('Step 3: Changing user password...');
         await _changePassword();
-
       }
-      // 步驟 4: 完成配置
-      print('步驟 4: 正在完成配置...');
+
+      print('Step 4: Completing configuration...');
       await WifiApiService.configFinish();
-      // await Future.delayed(const Duration(seconds: 2)); // 給系統一些處理時間
-      print('配置已完成');
+      print('Configuration completed');
 
-      // 步驟 5: 應用設置變更
-      print('步驟 5: 正在應用設置變更...');
+      print('Step 5: Applying settings and waiting for 220 seconds...');
+      setState(() {
+        _updateStatus("Applying settings, please wait...");
+      });
+
       try {
-        await Future.delayed(const Duration(seconds: 2)); // 給設備一些應用配置的時間
-        print('設置已應用');
+        await Future.delayed(const Duration(seconds: 220));
+        print('Settings applied and wait completed');
       } catch (e) {
-        print('應用設置時出錯: $e');
+        print('Error during settings application or wait: $e');
+        setState(() {
+          _updateStatus("Failed to apply settings: $e");
+        });
+        throw e; // 繼續拋出異常以進入 catch 塊
       }
 
-      // 導航到初始化頁面
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const InitializationPage()),
-            (route) => false,
-      );
-    } catch (e) {
-      print('設置過程中出錯: $e');
+      // 步驟 6: 重新連接到新的 Wi-Fi
+      print('Step 6: Reconnecting to Wi-Fi with new SSID and password...');
+      setState(() {
+        _updateStatus("Connecting to Wi-Fi...");
+        isConnecting = true;
+      });
+      await _reconnectToWifi();
 
-      // 顯示錯誤對話框
+      // 連線成功，導航到 LoginPage
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error during setup process: $e');
+      setState(() {
+        isConnecting = false;
+      });
       if (mounted) {
         showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('設置失敗'),
-              content: Text('無法完成設置: $e'),
+              title: const Text('Setup Failed'),
+              content: Text('Unable to complete setup: $e'),
               actions: <Widget>[
                 TextButton(
-                  child: const Text('確定'),
+                  child: const Text('OK'),
                   onPressed: () {
                     Navigator.of(context).pop();
-
-                    // 仍然導航到初始化頁面
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const InitializationPage()),
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
                           (route) => false,
                     );
                   },
@@ -540,6 +690,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       }
     }
   }
+
   // 省略號動畫
   void _startEllipsisAnimation() {
     _ellipsisTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
@@ -1126,82 +1277,119 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-        child: Column(
-          children: [
-            // Stepper 區域 - 使用螢幕比例
-            Container(
-              height: stepperAreaHeight,
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: StepperComponent(
-                configPath: 'lib/shared/config/flows/initialization/wifi.json',
-                modelType: currentModel,
-                onStepChanged: _updateCurrentStep,
-                controller: _stepperController,
-                isLastStepCompleted: isLastStepCompleted,
-              ),
-            ),
+      body: Stack(
+        children: [
+          // 主內容
+          SafeArea(
+            child: Column(
+              children: [
+                // Stepper 區域
+                Container(
+                  height: stepperAreaHeight,
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: AbsorbPointer(
+                    absorbing: isAuthenticating || !isAuthenticated, // 認證期間或未認證時禁用交互
+                    child: Opacity(
+                      opacity: isAuthenticating || !isAuthenticated ? 0.5 : 1.0, // 視覺上降低透明度
+                      child: StepperComponent(
+                        configPath: 'lib/shared/config/flows/initialization/wifi.json',
+                        modelType: currentModel,
+                        onStepChanged: _updateCurrentStep,
+                        controller: _stepperController,
+                        isLastStepCompleted: isLastStepCompleted,
+                      ),
+                    ),
+                  ),
+                ),
 
-            // 主內容區域 - 使用螢幕比例
-            Container(
-              height: contentAreaHeight,
-              child: isShowingFinishingWizard
-                  ? _buildFinishingWizard(
-                titleHeight: titleHeight,
-                contentHeight: contentHeight,
-                titleFontSize: titleFontSize,
-                horizontalPadding: horizontalPadding,
-                verticalPadding: verticalPadding,
-              )
-                  : Column(
-                children: [
-                  // 步驟標題
+                // 主內容區域
+                Container(
+                  height: contentAreaHeight,
+                  child: isShowingFinishingWizard
+                      ? _buildFinishingWizard(
+                    titleHeight: titleHeight,
+                    contentHeight: contentHeight,
+                    titleFontSize: titleFontSize,
+                    horizontalPadding: horizontalPadding,
+                    verticalPadding: verticalPadding,
+                  )
+                      : Column(
+                    children: [
+                      // 步驟標題
+                      Container(
+                        height: titleHeight,
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        child: Text(
+                          _getCurrentStepName(),
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      // 步驟內容
+                      Expanded(
+                        child: AbsorbPointer(
+                          absorbing: isAuthenticating || !isAuthenticated, // 認證期間或未認證時禁用交互
+                          child: Opacity(
+                            opacity: isAuthenticating || !isAuthenticated ? 0.5 : 1.0,
+                            child: _buildPageView(
+                              horizontalPadding: horizontalPadding,
+                              verticalPadding: verticalPadding,
+                              itemSpacing: itemSpacing,
+                              subtitleFontSize: subtitleFontSize,
+                              bodyTextFontSize: bodyTextFontSize,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 導航按鈕區域
+                if (!isShowingFinishingWizard)
                   Container(
-                    height: titleHeight,
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    child: Text(
-                      _getCurrentStepName(),
+                    height: navigationAreaHeight,
+                    child: _buildNavigationButtons(
+                      buttonHeight: buttonHeight,
+                      buttonSpacing: buttonSpacing,
+                      horizontalPadding: horizontalPadding,
+                      buttonBorderRadius: buttonBorderRadius,
+                      buttonTextFontSize: buttonTextFontSize,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 認證期間顯示遮罩層
+          if (isAuthenticating)
+            Container(
+              color: Colors.black.withOpacity(0.5), // 半透明黑色遮罩
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: verticalPadding),
+                    Text(
+                      'Logging in$_ellipsis',
                       style: TextStyle(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.normal,
+                        fontSize: bodyTextFontSize,
                         color: Colors.white,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-
-                  // 步驟內容
-                  Expanded(
-                    child: _buildPageView(
-                      horizontalPadding: horizontalPadding,
-                      verticalPadding: verticalPadding,
-                      itemSpacing: itemSpacing,
-                      subtitleFontSize: subtitleFontSize,
-                      bodyTextFontSize: bodyTextFontSize,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 導航按鈕區域 - 使用螢幕比例
-            if (!isShowingFinishingWizard)
-              Container(
-                height: navigationAreaHeight,
-                child: _buildNavigationButtons(
-                  buttonHeight: buttonHeight,
-                  buttonSpacing: buttonSpacing,
-                  horizontalPadding: horizontalPadding,
-                  buttonBorderRadius: buttonBorderRadius,
-                  buttonTextFontSize: buttonTextFontSize,
+                  ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1485,7 +1673,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
-// Back Next 按鈕實現 - 使用比例尺寸
+// 修改導航按鈕，禁用交互
   Widget _buildNavigationButtons({
     required double buttonHeight,
     required double buttonSpacing,
@@ -1499,18 +1687,20 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 返回按鈕使用新的紫色邊框樣式
+          // 返回按鈕
           Expanded(
             child: GestureDetector(
-              onTap: _handleBack,
+              onTap: (isAuthenticating || !isAuthenticated) ? null : _handleBack, // 認證期間或未認證時禁用
               child: Container(
                 width: double.infinity,
                 height: buttonHeight,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(buttonBorderRadius),
-                  color: const Color(0xFF9747FF).withOpacity(0.2), // 紫色填充顏色帶透明度
+                  color: (isAuthenticating || !isAuthenticated)
+                      ? const Color(0xFF9747FF).withOpacity(0.1)
+                      : const Color(0xFF9747FF).withOpacity(0.2), // 禁用時更透明
                   border: Border.all(
-                    color: const Color(0xFF9747FF), // 紫色邊框
+                    color: const Color(0xFF9747FF),
                     width: 1.0,
                   ),
                 ),
@@ -1519,7 +1709,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                     'Back',
                     style: TextStyle(
                       fontSize: buttonTextFontSize,
-                      color: Colors.white,
+                      color: (isAuthenticating || !isAuthenticated)
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.white,
                     ),
                   ),
                 ),
@@ -1527,10 +1719,10 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
             ),
           ),
           SizedBox(width: buttonSpacing),
-          // 下一步按鈕保持不變
+          // 下一步按鈕
           Expanded(
             child: GestureDetector(
-              onTap: _handleNext,
+              onTap: (isAuthenticating || !isAuthenticated) ? null : _handleNext, // 認證期間或未認證時禁用
               child: _appTheme.whiteBoxTheme.buildSimpleColorButton(
                 width: double.infinity,
                 height: buttonHeight,
@@ -1540,7 +1732,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
                     'Next',
                     style: TextStyle(
                       fontSize: buttonTextFontSize,
-                      color: Colors.white,
+                      color: (isAuthenticating || !isAuthenticated)
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.white,
                     ),
                   ),
                 ),
