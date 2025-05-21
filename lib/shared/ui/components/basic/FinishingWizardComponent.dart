@@ -93,21 +93,26 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
 
-    return Container(
+    // 使用 buildStandardCard 替代原始的 Container
+    return _appTheme.whiteBoxTheme.buildStandardCard(
       width: screenSize.width * 0.9,
-      color: const Color(0xFFEFEFEF),
-      padding: const EdgeInsets.all(25.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 進程列表
-          ..._processes.map((process) => _buildProcessItem(process)),
-        ],
+      height: screenSize.height * 0.4, // 適當高度
+      child: Padding(
+        padding: const EdgeInsets.all(25.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 進程列表
+              ..._processes.map((process) => _buildProcessItem(process)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  // 計算總體進度（0.0 - 1.0）
+// 計算總體進度（0.0 - 1.0）
   double _calculateTotalProgress() {
     if (_processes.isEmpty) return 0.0;
 
@@ -119,7 +124,7 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
     return totalPercentage / (_processes.length * 100.0);
   }
 
-  // 構建單個進程項目
+// 構建單個進程項目
   Widget _buildProcessItem(ProcessInfo process) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,6 +137,7 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
+                color: Colors.white, // 更改為白色
               ),
             ),
             Text(
@@ -139,7 +145,7 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                color: AppColors.textLight, // 更改為半透明白色
               ),
             ),
           ],
@@ -155,13 +161,13 @@ class _FinishingWizardComponentState extends State<FinishingWizardComponent> {
     );
   }
 
-  // 建立虛線進度條
+// 建立虛線進度條
   Widget _buildDashedProgressBar(double progress) {
     return CustomPaint(
       painter: DashedProgressBarPainter(
         progress: progress,
-        backgroundColor: Colors.grey[300]!,
-        progressColor: Colors.black,
+        backgroundColor: Colors.grey[700]!, // 更改背景色為深灰
+        progressColor: AppColors.textLight, // 使用 AppColors.primary 作為進度顏色
       ),
       child: Container(
         width: double.infinity,
