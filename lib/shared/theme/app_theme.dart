@@ -82,38 +82,38 @@ class AppTextStyles {
   static const TextStyle heading1 = TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
+    color: AppColors.textLight,
   );
 
   static const TextStyle heading2 = TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
+    color: AppColors.textLight,
   );
 
   static const TextStyle heading3 = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
-    color: AppColors.textPrimary,
+    color: AppColors.textLight,
   );
 
   // 內文樣式
   static const TextStyle bodyLarge = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.normal,
-    color: AppColors.textPrimary,
+    color: AppColors.textLight,
   );
 
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.normal,
-    color: AppColors.textPrimary,
+    color: AppColors.textLight,
   );
 
   static const TextStyle bodySmall = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.normal,
-    color: AppColors.textSecondary,
+    color: AppColors.textLight,
   );
 
   // 特殊樣式
@@ -309,7 +309,8 @@ class WhiteBoxTheme {
     return buildCustomCard(
       width: width,
       height: height,
-      borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
+      borderRadius: borderRadius ??
+          BorderRadius.circular(AppDimensions.radiusS),
       blurRadius: defaultBlurRadius,
       gradientColors: AppColors.purpleBlueGradient,
       borderColor: AppColors.primary,
@@ -328,16 +329,18 @@ class WhiteBoxTheme {
     return buildCustomCard(
       width: width,
       height: height,
-      borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
+      borderRadius: borderRadius ??
+          BorderRadius.circular(AppDimensions.radiusS),
       blurRadius: defaultBlurRadius,
-      gradientColors: [AppColors.primary, AppColors.primary], // 使用純色填充
+      gradientColors: [AppColors.primary, AppColors.primary],
+      // 使用純色填充
       borderColor: AppColors.primary,
       opacity: defaultOpacity,
       child: child,
     );
   }
 
-  /// 建立標準漸層按鈕
+  /// 建立標準漸層按鈕 (類似於提供的SVG樣式)
   Widget buildStandardButton({
     required double width,
     required double height,
@@ -345,21 +348,38 @@ class WhiteBoxTheme {
     BorderRadius? borderRadius,
     VoidCallback? onPressed,
     bool isEnabled = true,
+    Color borderColor = const Color(0xFF9747FF), // 紫色邊框顏色
+    Color fillColor = const Color(0xFF9747FF), // 紫色填充顏色
+    double fillOpacity = 0.2, // 填充透明度
+    String? text, // 按鈕文字
   }) {
-    // 使用標準卡片風格但添加觸控反饋
     return GestureDetector(
       onTap: isEnabled ? onPressed : null,
       child: Opacity(
         opacity: isEnabled ? 1.0 : 0.5, // 如果禁用則降低透明度
-        child: buildCustomCard(
+        child: Container(
           width: width,
           height: height,
-          borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
-          blurRadius: defaultBlurRadius,
-          gradientColors: AppColors.purpleBlueGradient,
-          borderColor: AppColors.primary,
-          opacity: defaultOpacity,
-          child: child,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius ?? BorderRadius.circular(4.0), // 設定圓角大小為4
+            color: fillColor.withOpacity(fillOpacity), // 設定填充顏色和透明度
+            border: Border.all(
+              color: borderColor, // 設定邊框顏色
+              width: 1.0, // 設定邊框寬度
+            ),
+          ),
+          child: Center(
+            child: text != null
+                ? Text(
+              text,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8), // 白色文字帶80%透明度
+                fontSize: 16, // 適當的字體大小
+                fontWeight: FontWeight.w500, // 設定字體粗細
+              ),
+            )
+                : child, // 如果沒有提供文字，則使用自訂的子元件
+          ),
         ),
       ),
     );
@@ -378,7 +398,8 @@ class WhiteBoxTheme {
       height: height,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: borderRadius ?? BorderRadius.circular(AppDimensions.radiusS),
+        borderRadius: borderRadius ??
+            BorderRadius.circular(AppDimensions.radiusS),
       ),
       child: child,
     );
@@ -437,11 +458,21 @@ class WhiteBoxTheme {
     double borderWidth = 1.0,
     Widget? child,
   }) {
-    // 計算漸層的起點和終點
-    final double endX = width + (width * 0.18 * gradientAngle.abs());
-    final double endY = height - (height * 0.26 * gradientAngle.abs());
+    // 計算漸層的起點和終點 (添加保護措施避免 NaN)
+    // 使用安全的計算方式，確保不會產生 NaN 值
+    final double safeWidth = width > 0 ? width : 1.0;
+    final double safeHeight = height > 0 ? height : 1.0;
 
-    final BorderRadius finalBorderRadius = borderRadius ?? BorderRadius.circular(AppDimensions.radiusS);
+    // 計算漸層終點的坐標，確保結果在有效範圍內
+    final double endX = safeWidth + (safeWidth * 0.18 * gradientAngle.abs());
+    final double endY = safeHeight - (safeHeight * 0.26 * gradientAngle.abs());
+
+    // Alignment 的 x 和 y 值應該在 -1.0 到 1.0 之間
+    final double alignX = (endX / safeWidth).clamp(-1.0, 1.0);
+    final double alignY = (endY / safeHeight).clamp(-1.0, 1.0);
+
+    final BorderRadius finalBorderRadius = borderRadius ??
+        BorderRadius.circular(AppDimensions.radiusS);
 
     return Container(
       width: width,
@@ -477,8 +508,9 @@ class WhiteBoxTheme {
                 borderRadius: finalBorderRadius,
                 gradient: LinearGradient(
                   begin: Alignment.bottomLeft,
-                  end: Alignment(endX / width, endY / height),
-                  colors: gradientColors.map((color) => color.withOpacity(opacity)).toList(),
+                  end: Alignment(alignX, alignY), // 使用安全計算後的值
+                  colors: gradientColors.map((color) =>
+                      color.withOpacity(opacity)).toList(),
                 ),
                 border: Border.all(
                   color: borderColor.withOpacity(borderOpacity),
@@ -495,7 +527,6 @@ class WhiteBoxTheme {
     );
   }
 }
-
 /// 應用程式主題管理類
 ///
 /// 提供統一的主題管理，包含顏色、文字樣式、尺寸和各種元件主題

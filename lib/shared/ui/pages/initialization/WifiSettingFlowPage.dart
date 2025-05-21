@@ -1009,6 +1009,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
   // 處理返回操作
   void _handleBack() {
     if (currentStepIndex > 0) {
+      // 如果不是第一步，則回到上一步
       _isUpdatingStep = true;
       setState(() {
         currentStepIndex--;
@@ -1022,6 +1023,9 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
         curve: Curves.easeInOut,
       );
       _isUpdatingStep = false;
+    } else {
+      // 如果是第一步，則回到上一個頁面
+      Navigator.of(context).pop();
     }
   }
 
@@ -1257,7 +1261,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
-  // 修改 _buildNavigationButtons 方法
+  // Back Next 按鈕實現
   Widget _buildNavigationButtons() {
     return Container(
       width: double.infinity,
@@ -1265,27 +1269,33 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 返回按鈕直接使用 buildStandardCard
+          // 返回按鈕使用新的紫色邊框樣式
           Expanded(
-            child: Opacity(
-              opacity: currentStepIndex > 0 ? 1.0 : 0.5, // 如果不能返回則降低透明度
-              child: GestureDetector(
-                onTap: currentStepIndex > 0 ? _handleBack : null,
-                child: _appTheme.whiteBoxTheme.buildStandardCard(
-                  width: double.infinity,
-                  height: 56,
-                  child: Center(
-                    child: Text(
+            child: GestureDetector(
+              // 移除條件，使 Back 按鈕始終可點擊
+              onTap: _handleBack,
+              child: Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                  color: const Color(0xFF9747FF).withOpacity(0.2), // 紫色填充顏色帶透明度
+                  border: Border.all(
+                    color: const Color(0xFF9747FF), // 紫色邊框
+                    width: 1.0,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
                       'Back',
-                      style: AppTextStyles.buttonText,
-                    ),
+                      style: AppTextStyles.buttonText
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 20),
-          // 下一步按鈕使用 buildSimpleColorButton
+          // 下一步按鈕保持不變
           Expanded(
             child: GestureDetector(
               onTap: _handleNext,
@@ -1306,7 +1316,6 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       ),
     );
   }
-
   // 根據名稱創建組件
   Widget? _createComponentByName(String componentName) {
     List<String> detailOptions = _getStepDetailOptions();

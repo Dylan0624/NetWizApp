@@ -22,6 +22,9 @@ class BackgroundSettings {
 }
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     systemNavigationBarColor: Colors.transparent, // 數值方式確保透明
     systemNavigationBarDividerColor: Colors.transparent,
