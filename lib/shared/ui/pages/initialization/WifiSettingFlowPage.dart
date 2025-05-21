@@ -1063,72 +1063,6 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     return 'Step ${currentStepIndex + 1}';
   }
 
-// 根據名稱創建組件
-  Widget? _createComponentByName(String componentName) {
-    List<String> detailOptions = _getStepDetailOptions();
-
-    switch (componentName) {
-      case 'AccountPasswordComponent':
-        return AccountPasswordComponent(
-          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['User', 'Password', 'Confirm Password'],
-          onFormChanged: _handleFormChanged,
-          onNextPressed: _handleNext,
-          onBackPressed: _handleBack,
-        );
-      case 'ConnectionTypeComponent':
-      // 在創建組件前，確保已調用獲取網絡設置的方法
-        if (_currentWanSettings.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _loadCurrentWanSettings();
-          });
-        }
-
-        return ConnectionTypeComponent(
-          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['DHCP', 'Static IP', 'PPPoE'],
-          initialConnectionType: connectionType,
-          initialStaticIpConfig: connectionType == 'Static IP' ? staticIpConfig : null,
-          initialPppoeUsername: pppoeUsername,
-          initialPppoePassword: pppoePassword,
-          onSelectionChanged: _handleConnectionTypeChanged,
-          onNextPressed: _handleNext,
-          onBackPressed: _handleBack,
-        );
-      case 'SetSSIDComponent':
-      // 在創建組件前，確保已調用獲取無線設置的方法
-        if (_currentWirelessSettings.isEmpty && !_isLoadingWirelessSettings) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _loadWirelessSettings();
-          });
-        }
-
-        return SetSSIDComponent(
-          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['no authentication', 'Enhanced Open (OWE)', 'WPA2 Personal', 'WPA3 Personal', 'WPA2/WPA3 Personal', 'WPA2 Enterprise'],
-          initialSsid: ssid,
-          initialSecurityOption: securityOption,
-          initialPassword: ssidPassword,
-          onFormChanged: _handleSSIDFormChanged,
-          onNextPressed: _handleNext,
-          onBackPressed: _handleBack,
-        );
-      case 'SummaryComponent':
-        return SummaryComponent(
-          username: userName,
-          connectionType: connectionType,
-          ssid: ssid,
-          securityOption: securityOption,
-          password: ssidPassword,
-          staticIpConfig: connectionType == 'Static IP' ? staticIpConfig : null,
-          pppoeUsername: connectionType == 'PPPoE' ? pppoeUsername : null,
-          pppoePassword: connectionType == 'PPPoE' ? pppoePassword : null,
-          onNextPressed: _handleNext,
-          onBackPressed: _handleBack,
-        );
-      default:
-        print('不支援的組件名稱: $componentName');
-        return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // 獲取螢幕尺寸
@@ -1272,7 +1206,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
-// 完成精靈介面 - 使用比例尺寸
+// 完成精靈介面 - 使用固定高度
   Widget _buildFinishingWizard({
     required double titleHeight,
     required double contentHeight,
@@ -1280,6 +1214,11 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     required double horizontalPadding,
     required double verticalPadding,
   }) {
+    final screenSize = MediaQuery.of(context).size;
+
+    // 計算適合的組件高度 - 使用 contentHeight
+    final componentHeight = contentHeight * 0.85; // 使用內容區域的85%，預留一些空間
+
     return Column(
       children: [
         // 標題
@@ -1298,21 +1237,21 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
           ),
         ),
 
-        // 內容
-        Expanded(
+        // 內容 - 使用固定高度替代 Expanded
+        Container(
+          height: contentHeight,
+          width: double.infinity,
           child: Center(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: verticalPadding,
-                ),
-                child: FinishingWizardComponent(
-                  processNames: _processNames,
-                  totalDurationSeconds: 10,
-                  onCompleted: _handleWizardCompleted,
-                ),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: verticalPadding,
+              ),
+              child: FinishingWizardComponent(
+                processNames: _processNames,
+                totalDurationSeconds: 10,
+                onCompleted: _handleWizardCompleted,
+                height: componentHeight, // 傳入計算好的高度
               ),
             ),
           ),
@@ -1321,7 +1260,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     );
   }
 
-// 構建頁面視圖 - 確保內容可滾動
+// 修改 _buildPageView 確保有適當的高度
   Widget _buildPageView({
     required double horizontalPadding,
     required double verticalPadding,
@@ -1342,34 +1281,113 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
       );
     }
 
-    return PageView.builder(
-      controller: _pageController,
-      physics: const ClampingScrollPhysics(),
-      itemCount: steps.length,
-      onPageChanged: (index) {
-        if (_isUpdatingStep || index == currentStepIndex) return;
-        _isUpdatingStep = true;
-        setState(() {
-          currentStepIndex = index;
-          isCurrentStepComplete = false;
-        });
-        _stepperController.jumpToStep(index);
-        _isUpdatingStep = false;
-      },
-      itemBuilder: (context, index) {
-        return _buildStepContent(
-          index,
-          horizontalPadding: horizontalPadding,
-          verticalPadding: verticalPadding,
-          itemSpacing: itemSpacing,
-          subtitleFontSize: subtitleFontSize,
-          bodyTextFontSize: bodyTextFontSize,
-        );
-      },
+    // 使用 Container 確保 PageView 有固定高度
+    return Container(
+      height: double.infinity, // 確保使用父容器提供的全部高度
+      child: PageView.builder(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: steps.length,
+        onPageChanged: (index) {
+          if (_isUpdatingStep || index == currentStepIndex) return;
+          _isUpdatingStep = true;
+          setState(() {
+            currentStepIndex = index;
+            isCurrentStepComplete = false;
+          });
+          _stepperController.jumpToStep(index);
+          _isUpdatingStep = false;
+        },
+        itemBuilder: (context, index) {
+          return _buildStepContent(
+            index,
+            horizontalPadding: horizontalPadding,
+            verticalPadding: verticalPadding,
+            itemSpacing: itemSpacing,
+            subtitleFontSize: subtitleFontSize,
+            bodyTextFontSize: bodyTextFontSize,
+          );
+        },
+      ),
     );
   }
 
-// 構建步驟內容 - 確保內容可滾動
+// 修改 _createComponentByName 方法，為所有組件傳遞高度
+  Widget? _createComponentByName(String componentName) {
+    List<String> detailOptions = _getStepDetailOptions();
+    final screenSize = MediaQuery.of(context).size;
+
+    // 為所有組件設置的共同高度比例
+    final componentHeightRatio = 0.45; // 使用螢幕高度的 45%
+    final componentHeight = screenSize.height * componentHeightRatio;
+
+    switch (componentName) {
+      case 'AccountPasswordComponent':
+        return AccountPasswordComponent(
+          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['User', 'Password', 'Confirm Password'],
+          onFormChanged: _handleFormChanged,
+          onNextPressed: _handleNext,
+          onBackPressed: _handleBack,
+          height: componentHeight, // 使用共同的比例高度
+        );
+      case 'ConnectionTypeComponent':
+      // 在創建組件前，確保已調用獲取網絡設置的方法
+        if (_currentWanSettings.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadCurrentWanSettings();
+          });
+        }
+
+        return ConnectionTypeComponent(
+          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['DHCP', 'Static IP', 'PPPoE'],
+          initialConnectionType: connectionType,
+          initialStaticIpConfig: connectionType == 'Static IP' ? staticIpConfig : null,
+          initialPppoeUsername: pppoeUsername,
+          initialPppoePassword: pppoePassword,
+          onSelectionChanged: _handleConnectionTypeChanged,
+          onNextPressed: _handleNext,
+          onBackPressed: _handleBack,
+          height: componentHeight, // 添加比例高度
+        );
+      case 'SetSSIDComponent':
+      // 在創建組件前，確保已調用獲取無線設置的方法
+        if (_currentWirelessSettings.isEmpty && !_isLoadingWirelessSettings) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadWirelessSettings();
+          });
+        }
+
+        return SetSSIDComponent(
+          displayOptions: detailOptions.isNotEmpty ? detailOptions : const ['no authentication', 'Enhanced Open (OWE)', 'WPA2 Personal', 'WPA3 Personal', 'WPA2/WPA3 Personal', 'WPA2 Enterprise'],
+          initialSsid: ssid,
+          initialSecurityOption: securityOption,
+          initialPassword: ssidPassword,
+          onFormChanged: _handleSSIDFormChanged,
+          onNextPressed: _handleNext,
+          onBackPressed: _handleBack,
+          height: componentHeight, // 添加比例高度
+        );
+      case 'SummaryComponent':
+        return SummaryComponent(
+          username: userName,
+          connectionType: connectionType,
+          ssid: ssid,
+          securityOption: securityOption,
+          password: ssidPassword,
+          staticIpConfig: connectionType == 'Static IP' ? staticIpConfig : null,
+          pppoeUsername: connectionType == 'PPPoE' ? pppoeUsername : null,
+          pppoePassword: connectionType == 'PPPoE' ? pppoePassword : null,
+          onNextPressed: _handleNext,
+          onBackPressed: _handleBack,
+          height: componentHeight, // 添加比例高度
+        );
+      default:
+        print('不支援的組件名稱: $componentName');
+        return null;
+    }
+  }
+
+// 構建步驟內容 - 確保內容可滾動且不溢出
   Widget _buildStepContent(
       int index, {
         required double horizontalPadding,
@@ -1389,7 +1407,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
 
     // 如果是最後一個步驟，顯示摘要
     if (index == steps.length - 1) {
-      return SingleChildScrollView(
+      return SingleChildScrollView( // 使用 SingleChildScrollView 確保內容可滾動
         physics: const AlwaysScrollableScrollPhysics(),
         child: Container(
           width: double.infinity,
@@ -1420,7 +1438,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
 
     if (components.isNotEmpty) {
-      return SingleChildScrollView(
+      return SingleChildScrollView( // 使用 SingleChildScrollView 確保內容可滾動
         physics: const AlwaysScrollableScrollPhysics(),
         child: Container(
           width: double.infinity,
@@ -1428,6 +1446,7 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // 使用 min 避免撐大 Column
             children: components,
           ),
         ),
@@ -1435,13 +1454,14 @@ class _WifiSettingFlowPageState extends State<WifiSettingFlowPage> {
     }
 
     // 沒有定義組件的步驟
-    return SingleChildScrollView(
+    return SingleChildScrollView( // 使用 SingleChildScrollView 確保內容可滾動
       physics: const AlwaysScrollableScrollPhysics(),
       child: Container(
         width: double.infinity,
         padding: contentPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // 使用 min 避免撐大 Column
           children: [
             Text(
               'Step ${index + 1} Content',

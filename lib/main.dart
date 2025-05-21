@@ -24,7 +24,11 @@ class BackgroundSettings {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
+  // 添加這行代碼來限制應用方向只能為縱向
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     systemNavigationBarColor: Colors.transparent, // 數值方式確保透明
     systemNavigationBarDividerColor: Colors.transparent,
@@ -63,7 +67,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return AppBackgroundWrapper(child: child ?? Container());
       },
-      home: const InitializationPage(),
+      home: const LoginPage(),
     );
   }
 }

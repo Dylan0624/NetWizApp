@@ -74,6 +74,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   # QR碼生成器
   qr_flutter: ^4.1.0
+  flutter_hooks: ^0.19.0
 
 
 # 啟動頁面配置
