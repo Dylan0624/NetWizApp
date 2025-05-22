@@ -11,6 +11,7 @@ import 'package:whitebox/shared/ui/pages/test/TestPage.dart';
 import 'package:whitebox/shared/ui/pages/test/TestPasswordPage.dart';
 import 'package:whitebox/shared/ui/pages/test/SrpLoginTestPage.dart';
 import 'package:whitebox/shared/ui/pages/test/SrpLoginModifiedTestPage.dart';
+import 'package:whitebox/shared/ui/pages/test/NetworkTopoView.dart';
 import 'package:whitebox/shared/ui/pages/test/theme_test_page.dart';
 import 'package:whitebox/shared/theme/app_theme.dart';
 
@@ -67,7 +68,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return AppBackgroundWrapper(child: child ?? Container());
       },
-      home: const LoginPage(),
+      home: const NetworkTopoView(),
     );
   }
 }

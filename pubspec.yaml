@@ -25,7 +25,7 @@ dependencies:
   # WiFi 掃描功能
   wifi_scan: ^0.4.1+2
   wifi_iot: ^0.3.18
-#  app_settings: ^4.3.1
+  # app_settings: ^4.3.1
   # HTTP 請求處理
   http: ^1.2.0
   # 網頁視圖
@@ -75,7 +75,10 @@ dependencies:
   # QR碼生成器
   qr_flutter: ^4.1.0
   flutter_hooks: ^0.19.0
-
+  # 裝置資訊獲取套件（新增）
+  device_info_plus: ^10.1.2
+  permission_handler: ^11.3.1
+  url_launcher: ^6.2.4
 
 # 啟動頁面配置
 flutter_native_splash:
@@ -102,6 +105,7 @@ flutter:
     - lib/shared/config/api/wifi.json
     - assets/images/
     - assets/images/icon/
+
   # 字體配置
   fonts:
     - family: Segoe UI
