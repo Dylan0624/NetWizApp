@@ -79,6 +79,8 @@ dependencies:
   device_info_plus: ^10.1.2
   permission_handler: ^11.3.1
   url_launcher: ^6.2.4
+  wifi_info_flutter: ^2.0.2  # 獲取當前 WiFi 資訊
+
 
 # 啟動頁面配置
 flutter_native_splash:
