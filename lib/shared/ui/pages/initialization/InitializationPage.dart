@@ -123,21 +123,10 @@ class _InitializationPageState extends State<InitializationPage> {
         Navigator.of(context).pop();
       }
 
-      // 處理錯誤，顯示錯誤訊息
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('獲取系統資訊失敗: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // 失敗時只印出 log，不顯示任何訊息，維持在當前頁面
+      print('獲取系統資訊失敗: $e');
 
-      // 發生錯誤時，預設開啟 WifiSettingFlowPage
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const WifiSettingFlowPage()),
-      );
+      // 不做任何導航，維持在當前頁面
     }
   }
 
@@ -155,12 +144,56 @@ class _InitializationPageState extends State<InitializationPage> {
     }
   }
 
-  // 手動新增頁面 - 現在打開 WifiSettingFlowPage
-  void _openManualAdd() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const WifiSettingFlowPage()),
+  // 處理手動新增
+  void _openManualAdd() async {
+    // 顯示載入狀態
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        );
+      },
     );
+
+    try {
+      // 呼叫 API 獲取系統資訊
+      final systemInfo = await WifiApiService.getSystemInfo();
+
+      // 關閉載入對話框
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 檢查 blank_state 的值
+      final blankState = systemInfo['blank_state'];
+
+      if (blankState == "0") {
+        // blank_state 為 0，開啟 LoginPage
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      } else {
+        // blank_state 為 1 或其他值，開啟原來的 WifiSettingFlowPage
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const WifiSettingFlowPage()),
+        );
+      }
+
+    } catch (e) {
+      // 關閉載入對話框
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // 失敗時只印出 log，不顯示任何訊息，維持在當前頁面
+      print('獲取系統資訊失敗: $e');
+
+      // 不做任何導航，維持在當前頁面
+    }
   }
 
   @override

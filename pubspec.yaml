@@ -33,7 +33,7 @@ dependencies:
   # 加密相關功能
   crypto: ^3.0.3
   # 網路資訊獲取
-  network_info_plus: ^4.0.2
+  network_info_plus: ^5.0.0
   # 檔案路徑管理
   path_provider: ^2.1.1
   # 進階密碼學庫
@@ -79,7 +79,7 @@ dependencies:
   device_info_plus: ^10.1.2
   permission_handler: ^11.3.1
   url_launcher: ^6.2.4
-  wifi_info_flutter: ^2.0.2  # 獲取當前 WiFi 資訊
+
 
 
 # 啟動頁面配置

@@ -5,7 +5,6 @@ import 'package:whitebox/shared/theme/app_theme.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:wifi_info_flutter/wifi_info_flutter.dart';
 import 'dart:io';
 
 // WiFi掃描元件回調函數類型
@@ -135,7 +134,7 @@ class _WifiScannerComponentState extends State<WifiScannerComponent> {
     }
   }
 
-  // 修改：檢查當前連線的 WiFi SSID - 使用 network_info_plus
+// 修改：檢查當前連線的 WiFi SSID - 使用 network_info_plus
   Future<String?> _getCurrentWifiSSID() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
